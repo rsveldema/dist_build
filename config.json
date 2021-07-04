@@ -1,6 +1,9 @@
 {
+    "hosts": [
+        "127.0.0.1:5000"
+    ],
+
     "dirs": [
-        "/usr/include",
-        "/usr/local/include"
-    ]
+        "/Program Files (x86)/Microsoft Visual Studio/2019/Community/SDK/ScopeCppSDK/vc15/SDK/include/ucrt/"
+        ]
 }
