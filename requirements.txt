@@ -1,0 +1,6 @@
+
+## for the syncer
+requests
+
+## for the daemon
+flask
