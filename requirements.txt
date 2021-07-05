@@ -1,8 +1,8 @@
 
 ## for the syncer
 requests
+watchdog
 
 ## for the daemon
 flask
 pyopenssl
-

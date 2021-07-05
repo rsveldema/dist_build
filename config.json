@@ -4,6 +4,7 @@
     ],
 
     "dirs": [
-        "/Program Files (x86)/Microsoft Visual Studio/2019/Community/SDK/ScopeCppSDK/vc15/SDK/include/ucrt/"
+        "/Program Files (x86)/Microsoft Visual Studio/2019/Community/SDK/ScopeCppSDK/vc15/SDK/include/",
+        "/Users/rsvel/source/repos/include_syncer/tests"
         ]
 }
