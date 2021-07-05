@@ -42,7 +42,8 @@ async def install_directory(s: aiohttp.ClientSession, hosts: 'list[str]', dir: s
             uri = 'https://' + host + "/install_file"
             data = aiohttp.FormData()
             data.add_field('path', path)
-            data.add_field('content', content, content_type='application/octet-stream')
+            data.add_field('content', content, content_type='application/octet-stream', content_transfer_encoding="binary") 
+            print("start----------------")
             r = await s.post(uri, data = data, ssl=sslcontext)
             print("result = " + str(r))
 
@@ -67,4 +68,5 @@ async def sendData():
         await install_directory(s, hosts, cdir, sslcontext)
     await s.close()
 
-asyncio.run(sendData())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(sendData())

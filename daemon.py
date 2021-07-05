@@ -24,6 +24,8 @@ def install_file():
     if request.method == 'POST':
         pathprop = request.form.get('path')
         content = request.form.get('content')      
+        for p in request.form.keys():
+            print("keys = " + str(p))
 
         install_path = storage_dir() + pathprop
         filename = path.basename(install_path)
@@ -35,7 +37,7 @@ def install_file():
         if not path.isdir(install_dir):
             makedirs(install_dir)
 
-        fp=open(install_path, 'wb')
+        fp = open(install_path, 'w')
         fp.write(content)
         fp.close()
     else:
