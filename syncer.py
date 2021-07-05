@@ -4,10 +4,15 @@ import os
 import logging
 import aiohttp
 import asyncio
+import base64
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-
+from aiohttp import web
+from aiohttp_session import setup, get_session, session_middleware
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from cryptography import fernet
+import syncer_workqueue
 
 header_suffix_list = ['.h', '.hh', '.hxx']
 
@@ -85,11 +90,12 @@ class FileSystemObserver:
         print("got evt: " + src_path)
 
         if not src_path in scheduled_broadcast_tasks or not scheduled_broadcast_tasks[src_path]:
-            scheduled_broadcast_tasks[src_path] = True
+            if is_header_file(src_path):
+                scheduled_broadcast_tasks[src_path] = True
 
-            #asyncio.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
-            #self.loop.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
-            asyncio.run_coroutine_threadsafe(broadcast_file(self.session, hosts, src_path, self.sslcontext), self.loop)
+                #asyncio.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
+                #self.loop.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
+                asyncio.run_coroutine_threadsafe(broadcast_file(self.session, hosts, src_path, self.sslcontext), self.loop)
         else:
             print("broadcast of change already scheduled")
 
@@ -113,4 +119,9 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(sendData(loop))
 
 print("waiting for dir-changes")
-loop.run_forever()
+#loop.run_forever()
+
+syncer_workqueue.wait_for_incoming_requests()
+
+
+

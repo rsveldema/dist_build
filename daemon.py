@@ -1,23 +1,23 @@
 from os import mkdir, getenv, path, makedirs
 import ssl
-import time
+import json
 import base64
-from aiohttp import web
+from typing import Text
+import aiohttp
+from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
+from config import storage_dir
+import asyncio
 
+
+fp = open('config.json')
+config = json.loads(fp.read())
+fp.close()
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
-
-
-def storage_dir():
-    home = getenv("HOME")
-    if home == None:
-        home = "c:/"
-    storage = home + '/dist_build'
-    return storage
 
 
 async def install_file(request):    
@@ -38,22 +38,81 @@ async def install_file(request):
     fp = open(install_path, 'wb')
     fp.write(content)
     fp.close()    
-    return web.Response(text="ok")
+    return aiohttp.web.Response(text="ok")
 
 
 
 
 async def make_app():
-    app = web.Application()
+    app = aiohttp.web.Application()
     # secret_key must be 32 url-safe base64-encoded bytes
     fernet_key = fernet.Fernet.generate_key()
     secret_key = base64.urlsafe_b64decode(fernet_key)
     setup(app, EncryptedCookieStorage(secret_key))
-    app.add_routes([web.post('/install_file', install_file)])
+    app.add_routes([aiohttp.web.post('/install_file', install_file)])
     return app
 
 
-sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
+class LocalBuildJob:
+    def __init__(self, cmdline: str, env: dict, id, client_sslcontext, session):
+        self.cmdline = cmdline
+        self.env = env
+        self.id = id
+        self.client_sslcontext = client_sslcontext
+        self.session = session
 
-web.run_app(make_app(), ssl_context=sslcontext)
+    async def run(self):
+        syncer_host = config['syncer']
+
+        uri = syncer_host + '/notify_compile_job_done'
+        print("trying " + uri)
+        data=FormData()
+        data.add_field('id', self.id)
+        r = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
+        print("notifying syncer")
+
+
+async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> LocalBuildJob:    
+    uri = syncer_host + '/pop_compile_job'
+    print("trying " + uri)
+    data=FormData()
+    r = await session.post(uri, data = data, ssl=client_sslcontext)
+    text = await r.text()
+    if text == "ok":
+        return None
+
+    try:
+        payload = json.loads(text)
+        if "cmdline" in payload:
+            env = payload['env']
+            cmdline = payload['cmdline']
+            id = payload['id']
+            print("remote compile activated: " + cmdline)
+            return LocalBuildJob(cmdline, env, id, client_sslcontext, session)
+    except ValueError as e:
+        print("failed to decode json: " + e)
+    return None
+
+async def poll_job_queue():
+    session = aiohttp.ClientSession()    
+    client_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    #sslcontext.load_verify_locations('certs/server.pem')
+    client_sslcontext.check_hostname = False
+    client_sslcontext.verify_mode = ssl.CERT_NONE
+    #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
+    while True:
+        job = await try_fetch_compile_job(session, client_sslcontext, config['syncer'])
+        if job != None:
+            await job.run()
+        await asyncio.sleep(1)
+
+
+
+loop = asyncio.get_event_loop()
+
+loop.create_task(poll_job_queue())
+
+server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
+
+aiohttp.web.run_app(make_app(), ssl_context=server_sslcontext)
