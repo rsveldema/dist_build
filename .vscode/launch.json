@@ -10,6 +10,12 @@
             "request": "launch",
             "program": "syncer.py",
             "console": "integratedTerminal"
+        },  {
+            "name": "Python: daemon",
+            "type": "python",
+            "request": "launch",
+            "program": "daemon.py",
+            "console": "integratedTerminal"
         }
     ]
 }

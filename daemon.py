@@ -1,7 +1,12 @@
 from flask import Flask, request, jsonify
 from os import mkdir, getenv, path, makedirs
+import ssl
 
 app = Flask(__name__)
+
+ssl.match_hostname = lambda cert, hostname: True
+ssl.HAS_SNI = False
+
 
 @app.route("/")
 def hello():
@@ -18,7 +23,7 @@ def storage_dir():
 def install_file():
     if request.method == 'POST':
         pathprop = request.form.get('path')
-        content = request.form.get('content')
+        content = request.form.get('content')      
 
         install_path = storage_dir() + pathprop
         filename = path.basename(install_path)
@@ -30,7 +35,7 @@ def install_file():
         if not path.isdir(install_dir):
             makedirs(install_dir)
 
-        fp=open(install_path, 'w')
+        fp=open(install_path, 'wb')
         fp.write(content)
         fp.close()
     else:
@@ -39,5 +44,5 @@ def install_file():
 
 
 if __name__ == "__main__":
-    app.run(ssl_context=('cert.pem', 'key.pem'))
+    app.run(ssl_context=('certs/server.crt', 'certs/server.key'))
 
