@@ -31,9 +31,8 @@ def is_header_file(filename):
 
 
 async def broadcast_file(session: aiohttp.ClientSession, hosts: 'list[str]', path:str, sslcontext):
-    fp = open(path, 'rb')
-    content = fp.read()
-    fp.close()
+    with open(path, 'rb') as fp:
+        content = fp.read()
     print("file size = " + str(len(content)))
     for host in hosts:
         uri = 'https://' + host + "/install_file"
@@ -64,9 +63,9 @@ async def install_directory(session: aiohttp.ClientSession, hosts: 'list[str]', 
         await broadcast_file(session, hosts, path, sslcontext)
 
 
-fp = open('config.json')
-config = json.loads(fp.read())
-fp.close()
+with open('config.json', 'r') as fp:
+    config = json.loads(fp.read())
+
 
 print("config = " + str(config))
 

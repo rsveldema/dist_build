@@ -10,11 +10,11 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from config import storage_dir
 import asyncio
+import subprocess
 
 
-fp = open('config.json')
-config = json.loads(fp.read())
-fp.close()
+with open('config.json') as fp:
+    config = json.loads(fp.read())
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
@@ -35,9 +35,8 @@ async def install_file(request):
     if not path.isdir(install_dir):
         makedirs(install_dir)
 
-    fp = open(install_path, 'wb')
-    fp.write(content)
-    fp.close()    
+    with open(install_path, 'wb') as fp:
+        fp.write(content)
     return aiohttp.web.Response(text="ok")
 
 
@@ -62,11 +61,24 @@ class LocalBuildJob:
         self.session = session
 
     async def run(self):
-        syncer_host = config['syncer']
+        result = self.exec_cmd()
+        await self.send_reply(result)
 
+    def exec_cmd(self):
+        cmdlist = json.loads(self.cmdline)
+        try:
+            ret = subprocess.run(cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            return json.dumps((ret.returncode, str(ret.stderr) + str(ret.stdout)))
+        except FileNotFoundError as e:
+            return json.dumps("failed to find file: " + self.cmdline)
+
+
+    async def send_reply(self, result):
+        syncer_host = config['syncer']
         uri = syncer_host + '/notify_compile_job_done'
         print("trying " + uri)
-        data=FormData()
+        data = FormData()
+        data.add_field('result', result)
         data.add_field('id', self.id)
         r = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
         print("notifying syncer")

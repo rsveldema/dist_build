@@ -22,13 +22,14 @@ class RemoteJob:
     def get_dict(self):
         return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id}
 
-    async def notify_done(self):
+    async def notify_done(self, result):
+        self.result = result
         self.is_done = True
 
     async def done(self):
         print("done flag = " + str(self.is_done))
         while not self.is_done:
-            print("done flag = " + str(self.is_done))
+            print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
             await asyncio.sleep(1)
 
 job_queue: 'list[RemoteJob]' = []
@@ -46,14 +47,15 @@ async def push_compile_job(request):
     print("going to compile: " + cmdline)
     await job.done()
     print("compile done: " + cmdline)
-    return web.Response(text="ok")
+    return web.Response(text=job.result)
 
 async def notify_compile_job_done(request):
     payload = await request.post()
     id = payload['id']
+    result = payload['result']
     print("id = ==========> " + id)
     job = jobs_in_progress[id]
-    await job.notify_done()
+    await job.notify_done(result)
     return web.Response(text="ok")
 
 async def pop_compile_job(request):
