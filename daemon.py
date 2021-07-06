@@ -1,8 +1,9 @@
 from os import mkdir, getenv, path, makedirs
 import ssl
+import typing
 import json
 import base64
-from typing import Text
+from typing import Dict, List
 import aiohttp
 from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
@@ -11,10 +12,9 @@ from cryptography import fernet
 from config import storage_dir
 import asyncio
 import subprocess
+from file_utils import read_config, write_text_to_file
 
-
-with open('config.json') as fp:
-    config = json.loads(fp.read())
+config = read_config()
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
@@ -53,24 +53,57 @@ async def make_app():
 
 
 class LocalBuildJob:
-    def __init__(self, cmdline: str, env: dict, id, client_sslcontext, session):
-        self.cmdline = cmdline
+    cmdlist: typing.List[str]
+    id: str
+    env: typing.Dict[str, str]
+    files: typing.Dict[str, str]
+
+    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str]):
+        self.cmdlist = json.loads(cmdline)
         self.env = env
         self.id = id
+        self.files = json.loads(files)
         self.client_sslcontext = client_sslcontext
         self.session = session
 
     async def run(self):
+        self.save_files()
         result = self.exec_cmd()
         await self.send_reply(result)
 
-    def exec_cmd(self):
-        cmdlist = json.loads(self.cmdline)
+    def save_files(self):
+        print(str(self.files))
+        for it in self.files:
+            oldpath = it
+            newpath = self.save_file(oldpath, self.files[it])
+            self.patch_arg(oldpath, newpath)
+
+    def patch_arg(self, oldpath:str, newpath:str):
+        print("PATCH: " + oldpath + ' -> ' + newpath)
+        new_cmdline = []
+        for orig in self.cmdlist:
+            fixed = orig.replace(oldpath, newpath)
+            new_cmdline.append( fixed )
+        self.cmdlist = new_cmdline
+
+    def save_file(self, old_path, content) -> str:
+        container_path = storage_dir() + '/' + old_path
+        container_dir = path.dirname(container_path)
+        makedirs(container_dir, exist_ok=True)
+        write_text_to_file(container_path, content)
+        print("wrote " + container_path)
+        return container_path
+
+
+    def exec_cmd(self) -> str:
         try:
-            ret = subprocess.run(cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            print("EXEC: " + str(self.cmdlist))
+            ret = subprocess.run(self.cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             return json.dumps((ret.returncode, str(ret.stderr) + str(ret.stdout)))
         except FileNotFoundError as e:
             return json.dumps("failed to find file: " + self.cmdline)
+        except:
+            return json.dumps("unknown error during run of " + self.cmdline)
 
 
     async def send_reply(self, result):
@@ -99,8 +132,9 @@ async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> Loca
             env = payload['env']
             cmdline = payload['cmdline']
             id = payload['id']
+            files = payload['files']
             print("remote compile activated: " + cmdline)
-            return LocalBuildJob(cmdline, env, id, client_sslcontext, session)
+            return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files)
     except ValueError as e:
         print("failed to decode json: " + e)
     return None

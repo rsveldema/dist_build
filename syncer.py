@@ -13,21 +13,11 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 import syncer_workqueue
-
-header_suffix_list = ['.h', '.hh', '.hxx']
-
+from file_utils import is_header_file, read_config
 
 ssl.match_hostname = lambda cert, hostname: True
 
-
-def is_header_file(filename):
-    for h in header_suffix_list:
-        if filename.endswith(h):
-            return True
-    return False
-
-
-    
+config = read_config()    
 
 
 async def broadcast_file(session: aiohttp.ClientSession, hosts: 'list[str]', path:str, sslcontext):
@@ -62,12 +52,6 @@ async def install_directory(session: aiohttp.ClientSession, hosts: 'list[str]', 
         path = dir + '/' + filename
         await broadcast_file(session, hosts, path, sslcontext)
 
-
-with open('config.json', 'r') as fp:
-    config = json.loads(fp.read())
-
-
-print("config = " + str(config))
 
 hosts = config['hosts']
 

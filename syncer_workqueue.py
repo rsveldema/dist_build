@@ -7,12 +7,14 @@ from aiohttp.web_response import json_response
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
+from typing import Dict, List
 
 job_counter = 0
 
 class RemoteJob:
-    def __init__(self, cmdline:str, env: dict):
+    def __init__(self, cmdline:str, env: dict, files: Dict[str, str]):
         global job_counter
+        self.files = files
         self.cmdline = cmdline
         self.env = env
         self.is_done = False
@@ -20,7 +22,7 @@ class RemoteJob:
         job_counter += 1
 
     def get_dict(self):
-        return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id}
+        return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files}
 
     async def notify_done(self, result):
         self.result = result
@@ -39,13 +41,14 @@ async def push_compile_job(request):
     data = await request.post()
     cmdline = data['cmdline']
     env = data['env']
+    files = data['files']
 
-    job = RemoteJob(cmdline, env)
+    job = RemoteJob(cmdline, env, files)
     job_queue.append(job)
     jobs_in_progress[job.id] = job
 
     print("going to compile: " + cmdline)
-    await job.done()
+    await job.done() 
     print("compile done: " + cmdline)
     return web.Response(text=job.result)
 
