@@ -2,8 +2,9 @@
     "hosts": [
         "localhost:8443"
     ],
-
+    "syncer": "https://localhost:5000",
     "dirs": [
-        "/Users/rsvel/source/repos/include_syncer/tests"
-        ]
+        "/Users/rsvel/source/repos/include_syncer/tests",
+        "/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt"
+    ]
 }
