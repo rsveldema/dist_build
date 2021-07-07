@@ -2,19 +2,13 @@
 
 ## Usage
 
-- Machine 1:
-
-```bash
-    python daemon.py 
-```
-
-- Machine 2, terminal 1:
+Run this in a terminal on the machine you're doing development on:
 
 ```bash
     python syncer.py
 ```
 
-- Machine 2, terminal 2:
+On your developmentn machine, instead of calling cl.exe directly, prefix it with dist_build like so:
 
 ```bash
     
@@ -25,6 +19,13 @@ python dist_build.py /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Com
      /Fo"build/" /EHsc \
       tests/hello.c
 ```
+
+On the build machines you use:
+
+```bash
+    python daemon.py 
+```
+
 
 
 ## Features
