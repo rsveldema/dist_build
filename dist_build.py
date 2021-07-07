@@ -1,7 +1,7 @@
 import json
 import ssl
 import os
-from file_utils import is_header_file
+import io
 import sys
 import logging
 import aiohttp
@@ -9,16 +9,12 @@ import asyncio
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-from file_utils import is_source_file, read_content, read_config
+from file_utils import is_source_file, read_content, read_config, deserialize_all_files_from_stream, write_binary_to_file
 
 cmdline = sys.argv[1:]
-
 print(cmdline)
 
-
 config = read_config()
-
-
 
 
 async def start_compile_job(session, sslcontext, cmdline, syncer_host):
@@ -31,9 +27,14 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     data.add_field('files', json.dumps(files))
     data.add_field('cmdline', json.dumps(cmdline))
     data.add_field('env', json.dumps(dict(os.environ)))
-    print("start----------------")
+    #print("start----------------")
     r = await session.post(uri, data = data, ssl=sslcontext)
-    print("result = " + str(await r.text()))
+    body = await r.read()
+    all_files = deserialize_all_files_from_stream(io.BytesIO(body))
+    #print(f"received {len(all_files)} files")
+    for filename in all_files:
+        write_binary_to_file(filename, all_files[filename])
+
 
 
 async def sendDataToSyncer(loop, cmdline, syncer_host):

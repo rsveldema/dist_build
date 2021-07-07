@@ -70,14 +70,11 @@ class FileSystemObserver:
 
     def dispatch(self, evt):
         src_path = evt.src_path
-        print("got evt: " + src_path)
+        print("got file system evt: " + src_path)
 
         if not src_path in scheduled_broadcast_tasks or not scheduled_broadcast_tasks[src_path]:
             if is_header_file(src_path):
                 scheduled_broadcast_tasks[src_path] = True
-
-                #asyncio.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
-                #self.loop.create_task( broadcast_file(self.session, hosts, src_path, self.sslcontext) )
                 asyncio.run_coroutine_threadsafe(broadcast_file(self.session, hosts, src_path, self.sslcontext), self.loop)
         else:
             print("broadcast of change already scheduled")

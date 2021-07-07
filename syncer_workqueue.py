@@ -8,10 +8,16 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from typing import Dict, List
+from file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream
+from urllib.parse import unquote
 
 job_counter = 0
 
 class RemoteJob:
+    files: Dict[str, str]
+    to_send : Dict[str, bytes]
+    cmdline: str
+
     def __init__(self, cmdline:str, env: dict, files: Dict[str, str]):
         global job_counter
         self.files = files
@@ -24,7 +30,8 @@ class RemoteJob:
     def get_dict(self):
         return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files}
 
-    async def notify_done(self, result):
+    async def notify_done(self, result, to_send: Dict[str, bytes]):
+        self.to_send = to_send
         self.result = result
         self.is_done = True
 
@@ -50,15 +57,41 @@ async def push_compile_job(request):
     print("going to compile: " + cmdline)
     await job.done() 
     print("compile done: " + cmdline)
-    return web.Response(text=job.result)
+    #return web.Response(text=job.result)
+    
+    print(f"GO TO SEND: {job.to_send}")
 
+    to_send = job.to_send
+    stream_response = web.StreamResponse()
+    stream_response.enable_chunked_encoding()
+    await stream_response.prepare(request)    
+    await serialize_all_files_to_stream(stream_response, to_send)
+    await stream_response.write_eof()
+    return stream_response
+
+
+
+"""
+sent by daemon to syncer
+"""
 async def notify_compile_job_done(request):
-    payload = await request.post()
+    payload: List[str] = await request.post()
     id = payload['id']
     result = payload['result']
+
+    to_send: Dict[str, bytes] = {}
+    for p in payload:
+        decoded_filename = unquote(p)
+        print(f"EXAMINGING {decoded_filename}")
+        if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
+            print("FOUND OBJECT FILE: " + decoded_filename)
+            out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
+            data:web.FileField = payload[p]
+            to_send[out_file] = data.file.read()
+
     print("id = ==========> " + id)
     job = jobs_in_progress[id]
-    await job.notify_done(result)
+    await job.notify_done(result, to_send)
     return web.Response(text="ok")
 
 async def pop_compile_job(request):

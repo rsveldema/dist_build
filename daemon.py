@@ -1,4 +1,4 @@
-from os import mkdir, getenv, path, makedirs
+from os import mkdir, getenv, path, makedirs, chdir
 import ssl
 import typing
 import json
@@ -12,7 +12,7 @@ from cryptography import fernet
 from config import storage_dir
 import asyncio
 import subprocess
-from file_utils import read_config, write_text_to_file
+from file_utils import is_source_file, read_config, read_content, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 config = read_config()
 
@@ -65,7 +65,7 @@ class LocalBuildJob:
         self.files = json.loads(files)
         self.client_sslcontext = client_sslcontext
         self.session = session
-
+        
     async def run(self):
         self.save_files()
         result = self.exec_cmd()
@@ -106,13 +106,46 @@ class LocalBuildJob:
             return json.dumps("unknown error during run of " + self.cmdline)
 
 
+    def get_output_path(self):        
+        vs_output_path = "/Fo"
+        for param in self.cmdlist:
+            if param.startswith(vs_output_path):
+                return param[len(vs_output_path):]
+        return None
+
+    def is_using_microsoft_compiler(self):
+        compiler_name = self.cmdlist[0].lower()
+        if compiler_name.endswith("cl.exe"):
+            return True        
+        return False
+
+    def append_output_files(self, outfiles: Dict[str, bytes]):
+        is_microsoft = self.is_using_microsoft_compiler()
+        for p in self.cmdlist:
+            if is_source_file(p):
+                output_file = transform_filename_to_output_name(p, is_microsoft, self.get_output_path())
+                print("output file ==== " + output_file)
+                try:
+                    outfiles[output_file] = read_binary_content(output_file)
+                except FileNotFoundError as e:
+                    print("ERROR: failed to find output file: " + output_file)
+
+
     async def send_reply(self, result):
+        output_path = self.get_output_path()
+
+        outfiles: typing.Dict[str, bytes] = {}
+
+        self.append_output_files(outfiles)
+
         syncer_host = config['syncer']
         uri = syncer_host + '/notify_compile_job_done'
         print("trying " + uri)
         data = FormData()
         data.add_field('result', result)
         data.add_field('id', self.id)
+        for file in outfiles:
+            data.add_field(FILE_PREFIX_IN_FORM + file, outfiles[file])
         r = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
         print("notifying syncer")
 
@@ -121,7 +154,12 @@ async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> Loca
     uri = syncer_host + '/pop_compile_job'
     print("trying " + uri)
     data=FormData()
-    r = await session.post(uri, data = data, ssl=client_sslcontext)
+    try:
+        r = await session.post(uri, data = data, ssl=client_sslcontext)
+    except:
+        print("failed to fetch a job from the syncer, trying again later")
+        return None
+    
     text = await r.text()
     if text == "ok":
         return None
@@ -133,7 +171,7 @@ async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> Loca
             cmdline = payload['cmdline']
             id = payload['id']
             files = payload['files']
-            print("remote compile activated: " + cmdline)
+            #print("remote compile activated: " + cmdline)
             return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files)
     except ValueError as e:
         print("failed to decode json: " + e)
@@ -152,13 +190,15 @@ async def poll_job_queue():
             await job.run()
         await asyncio.sleep(1)
 
-
-
 loop = asyncio.get_event_loop()
 
 loop.create_task(poll_job_queue())
 
 server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
 server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
+
+
+print("CHANGING RUN DIR TO " + storage_dir())
+chdir(storage_dir())
 
 aiohttp.web.run_app(make_app(), ssl_context=server_sslcontext)
