@@ -207,7 +207,9 @@ async def poll_job_queue():
         job = await try_fetch_compile_job(session, client_sslcontext, config['syncer'])
         if job != None:
             await job.run()
-        await asyncio.sleep(1)
+        else:
+            # if a job-fetch failed, we'll start slowing down
+            await asyncio.sleep(1)
 
 loop = asyncio.get_event_loop()
 
