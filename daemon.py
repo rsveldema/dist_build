@@ -68,17 +68,38 @@ class LocalBuildJob:
         
     async def run(self):
         self.save_files()
+        self.change_include_dirs()
         result = self.exec_cmd()
         await self.send_reply(result)
+
+    def change_include_dirs(self):
+        new_cmdline:List[str] = []
+        found_include_directive = False
+        for orig in self.cmdlist:
+            
+            if found_include_directive:
+                found_include_directive = False
+                orig = storage_dir() + orig
+
+            if orig == '/I' or orig == '-I':
+               found_include_directive = True
+            elif orig.startswith('-I'):
+                orig = orig[2:]
+                orig = '-I' + storage_dir() + orig
+
+
+            new_cmdline.append(orig)   
+        self.cmdlist = new_cmdline
+
 
     def save_files(self):
         print(str(self.files))
         for it in self.files:
             oldpath = it
             newpath = self.save_file(oldpath, self.files[it])
-            self.patch_arg(oldpath, newpath)
+            self.patch_arg_refering_saved_file(oldpath, newpath)
 
-    def patch_arg(self, oldpath:str, newpath:str):
+    def patch_arg_refering_saved_file(self, oldpath:str, newpath:str):
         print("PATCH: " + oldpath + ' -> ' + newpath)
         new_cmdline = []
         for orig in self.cmdlist:
@@ -132,8 +153,6 @@ class LocalBuildJob:
 
 
     async def send_reply(self, result):
-        output_path = self.get_output_path()
-
         outfiles: typing.Dict[str, bytes] = {}
 
         self.append_output_files(outfiles)

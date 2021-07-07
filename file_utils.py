@@ -45,7 +45,6 @@ def write_binary_to_file(container_path, content):
 
 
 def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_path: str):
-
     prefix = ""
 
     ext = ".o"
@@ -75,7 +74,7 @@ async def serialize_all_files_to_stream(stream_response: web.StreamResponse, out
         str_len = len(out_file)
         data_len = len(data)
 
-        print(f"SENDING {str_len} with len {data_len}")
+        #print(f"SENDING {str_len} with len {data_len}")
 
         await stream_response.write(str_len.to_bytes(4, 'little'))
         await stream_response.write(out_file.encode('utf-8'))
