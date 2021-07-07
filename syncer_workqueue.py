@@ -41,8 +41,8 @@ class RemoteJob:
             print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
             await asyncio.sleep(1)
 
-job_queue: 'list[RemoteJob]' = []
-jobs_in_progress: 'dict[str, RemoteJob]' = {}
+job_queue: List[RemoteJob] = []
+jobs_in_progress: Dict[str, RemoteJob] = {}
 
 async def push_compile_job(request):    
     data = await request.post()
@@ -59,7 +59,7 @@ async def push_compile_job(request):
     print("compile done: " + cmdline)
     #return web.Response(text=job.result)
     
-    print(f"GO TO SEND: {job.to_send}")
+    #print(f"GO TO SEND: {job.to_send}")
 
     to_send = job.to_send
     stream_response = web.StreamResponse()
@@ -82,9 +82,9 @@ async def notify_compile_job_done(request):
     to_send: Dict[str, bytes] = {}
     for p in payload:
         decoded_filename = unquote(p)
-        print(f"EXAMINGING {decoded_filename}")
+        #print(f"EXAMINGING {decoded_filename}")
         if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
-            print("FOUND OBJECT FILE: " + decoded_filename)
+            #print("FOUND OBJECT FILE: " + decoded_filename)
             out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
             data:web.FileField = payload[p]
             to_send[out_file] = data.file.read()

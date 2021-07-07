@@ -5,16 +5,15 @@ import json
 import base64
 from typing import Dict, List
 import aiohttp
+from aiohttp.client import ClientSession
 from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from config import storage_dir
+from config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-import subprocess
-from file_utils import is_source_file, read_config, read_content, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from file_utils import is_source_file, read_content, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
-config = read_config()
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
@@ -69,7 +68,7 @@ class LocalBuildJob:
     async def run(self):
         self.save_files()
         self.change_include_dirs()
-        result = self.exec_cmd()
+        result = await self.exec_cmd()
         await self.send_reply(result)
 
     def change_include_dirs(self):
@@ -116,15 +115,18 @@ class LocalBuildJob:
         return container_path
 
 
-    def exec_cmd(self) -> str:
+    async def exec_cmd(self) -> str:
         try:
             print("EXEC: " + str(self.cmdlist))
-            ret = subprocess.run(self.cmdlist, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+
+            program = self.cmdlist[0]
+            args = self.cmdlist[1:]
+            ret = await asyncio.subprocess.create_subprocess_exec(program=program, args=args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             return json.dumps((ret.returncode, str(ret.stderr) + str(ret.stdout)))
         except FileNotFoundError as e:
-            return json.dumps("failed to find file: " + self.cmdline)
+            return json.dumps(f"failed to find file: {self.cmdlist}")
         except:
-            return json.dumps("unknown error during run of " + self.cmdline)
+            return json.dumps(f"unknown error during run of {self.cmdlist}")
 
 
     def get_output_path(self):        
@@ -157,7 +159,7 @@ class LocalBuildJob:
 
         self.append_output_files(outfiles)
 
-        syncer_host = config['syncer']
+        syncer_host = get_syncer_host()
         uri = syncer_host + '/notify_compile_job_done'
         print("trying " + uri)
         data = FormData()
@@ -169,17 +171,17 @@ class LocalBuildJob:
         print("notifying syncer")
 
 
-async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> LocalBuildJob:    
+async def try_fetch_compile_job(session: ClientSession, client_sslcontext, syncer_host, jobid: int) -> LocalBuildJob:    
     uri = syncer_host + '/pop_compile_job'
-    print("trying " + uri)
+    print(f"job {jobid}: trying " + uri)
     data=FormData()
     try:
-        r = await session.post(uri, data = data, ssl=client_sslcontext)
+        client_response = await session.post(uri, data = data, ssl=client_sslcontext)
     except:
-        print("failed to fetch a job from the syncer, trying again later")
+        print(f"job {jobid}: failed to fetch a job from the syncer, trying again later")
         return None
     
-    text = await r.text()
+    text = await client_response.text()
     if text == "ok":
         return None
 
@@ -196,7 +198,7 @@ async def try_fetch_compile_job(session, client_sslcontext, syncer_host) -> Loca
         print("failed to decode json: " + e)
     return None
 
-async def poll_job_queue():
+async def poll_job_queue(jobid: int):
     session = aiohttp.ClientSession()    
     client_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     #sslcontext.load_verify_locations('certs/server.pem')
@@ -204,22 +206,24 @@ async def poll_job_queue():
     client_sslcontext.verify_mode = ssl.CERT_NONE
     #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
     while True:
-        job = await try_fetch_compile_job(session, client_sslcontext, config['syncer'])
+        job = await try_fetch_compile_job(session, client_sslcontext, get_syncer_host(), jobid)
         if job != None:
+            print(f"task {jobid} succeeded in fetching a job")            
             await job.run()
         else:
             # if a job-fetch failed, we'll start slowing down
             await asyncio.sleep(1)
 
-loop = asyncio.get_event_loop()
-
-loop.create_task(poll_job_queue())
 
 server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
 server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
 
-
 print("CHANGING RUN DIR TO " + storage_dir())
 chdir(storage_dir())
+
+loop = asyncio.get_event_loop()
+
+for i in range(num_available_cores()):
+    loop.create_task(poll_job_queue(i))
 
 aiohttp.web.run_app(make_app(), ssl_context=server_sslcontext)

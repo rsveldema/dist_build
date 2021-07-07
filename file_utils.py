@@ -23,17 +23,12 @@ def is_header_file(filename):
     return filename_ends_with(filename, header_suffix_list)
  
 def read_content(filename: str):
-    with open(filename) as fp:
+    with open(filename, 'r') as fp:
         return fp.read()
 
 def read_binary_content(filename: str) -> bytes:
     with open(filename, 'rb') as fp:
         return fp.read()
-
-def read_config():
-    with open('config.json', 'r') as fp:
-        return json.loads(fp.read())
-        
 
 def write_text_to_file(container_path, content):
     with open(container_path, 'w') as f:

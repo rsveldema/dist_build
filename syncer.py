@@ -1,10 +1,11 @@
+from config import get_build_hosts, get_include_dirs
 import json
 import ssl
 import os
 import logging
 import aiohttp
 import asyncio
-import base64
+from typing import List, Dict
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
@@ -13,16 +14,13 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 import syncer_workqueue
-from file_utils import is_header_file, read_config
+from file_utils import is_header_file, read_binary_content
 
 ssl.match_hostname = lambda cert, hostname: True
 
-config = read_config()    
 
-
-async def broadcast_file(session: aiohttp.ClientSession, hosts: 'list[str]', path:str, sslcontext):
-    with open(path, 'rb') as fp:
-        content = fp.read()
+async def broadcast_file(session: aiohttp.ClientSession, hosts: List[str], path:str, sslcontext):
+    content = read_binary_content(path)
     print("file size = " + str(len(content)))
     for host in hosts:
         uri = 'https://' + host + "/install_file"
@@ -35,10 +33,10 @@ async def broadcast_file(session: aiohttp.ClientSession, hosts: 'list[str]', pat
     scheduled_broadcast_tasks[path] = False
 
 
-async def install_directory(session: aiohttp.ClientSession, hosts: 'list[str]', dir: str, sslcontext):
+async def install_directory(session: aiohttp.ClientSession, hosts: List[str], dir: str, sslcontext):
     content = os.listdir(dir)
     print("content = " + str(content))
-    files = []
+    files: List[str] = []
     for item in content:
         if is_header_file(item):
             print('its a header: ' + item)
@@ -53,7 +51,7 @@ async def install_directory(session: aiohttp.ClientSession, hosts: 'list[str]', 
         await broadcast_file(session, hosts, path, sslcontext)
 
 
-hosts = config['hosts']
+hosts = get_build_hosts()
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(message)s',
@@ -62,7 +60,7 @@ logging.basicConfig(level=logging.INFO,
 scheduled_broadcast_tasks = {}
 
 class FileSystemObserver:
-    def __init__(self, session: aiohttp.ClientSession, hosts: 'list[str]', sslcontext, loop):
+    def __init__(self, session: aiohttp.ClientSession, hosts: List[str], sslcontext, loop):
         self.session = session
         self.hosts = hosts
         self.sslcontext = sslcontext
@@ -89,10 +87,10 @@ async def sendData(loop):
 
     event_handler = FileSystemObserver(session, hosts, sslcontext, loop)
     observer = Observer()
-    for cdir in config['dirs']:
+    for cdir in get_include_dirs():
         observer.schedule(event_handler, cdir, recursive=True)
     observer.start()
-    for cdir in config['dirs']:
+    for cdir in get_include_dirs():
         await install_directory(session, hosts, cdir, sslcontext)
 
 loop = asyncio.get_event_loop()

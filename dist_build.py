@@ -1,3 +1,4 @@
+from config import get_syncer_host
 import json
 import ssl
 import os
@@ -9,12 +10,10 @@ import asyncio
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-from file_utils import is_source_file, read_content, read_config, deserialize_all_files_from_stream, write_binary_to_file
+from file_utils import is_source_file, read_content, deserialize_all_files_from_stream, write_binary_to_file
 
 cmdline = sys.argv[1:]
 print(cmdline)
-
-config = read_config()
 
 
 async def start_compile_job(session, sslcontext, cmdline, syncer_host):
@@ -49,4 +48,4 @@ async def sendDataToSyncer(loop, cmdline, syncer_host):
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(sendDataToSyncer(loop, cmdline, config['syncer']))
+loop.run_until_complete(sendDataToSyncer(loop, cmdline, get_syncer_host()))
