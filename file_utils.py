@@ -1,4 +1,4 @@
-import json
+import os
 from sys import path
 from typing import Dict
 from aiohttp import web
@@ -7,6 +7,7 @@ import io
 header_suffix_list = ['.h', '.hh', '.hxx', '.hpp']
 source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 
+RESULT_DUMMY_FILENAME="RESULT"
 FILE_PREFIX_IN_FORM="FILE:"
 
 def filename_ends_with(filename, suffix_list):
@@ -41,24 +42,32 @@ def write_binary_to_file(container_path, content):
 
 def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_path: str):
     prefix = ""
+    rslash_pos = filename.rfind('\\')
+    lslash_pos = filename.rfind('/')
+    pos = rslash_pos
+    if lslash_pos > pos:
+        pos = lslash_pos
 
     ext = ".o"
     if is_microsoft:
         ext = ".obj"
         if output_path != None:
             prefix = output_path
-            rslash_pos = filename.rfind('\\')
-            lslash_pos = filename.rfind('/')
-            pos = rslash_pos
-            if lslash_pos > pos:
-                pos = lslash_pos
 
             if pos > 0:
-                filename = filename[pos:]
+                filename = filename[pos + 1:]
+    else:
+        if pos > 0:
+            filename = filename[pos + 1:]
+
 
     dot_pos = filename.rfind('.')
     if dot_pos < 0:
         dot_pos = len(filename)
+
+    if prefix != None and prefix != "":
+        prefix += os.path.pathsep
+
     return prefix + filename[:dot_pos] + ext
 
 
@@ -95,7 +104,7 @@ def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
     ret: Dict[str, bytes] = {}
 
     result = read_bytes_from_stream(inData)
-    ret['RESULT'] = result
+    ret[RESULT_DUMMY_FILENAME] = result
 
     while True:
         filename = read_bytes_from_stream(inData)

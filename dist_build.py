@@ -10,7 +10,7 @@ import asyncio
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-from file_utils import is_source_file, read_content, deserialize_all_files_from_stream, write_binary_to_file
+from file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, write_binary_to_file
 
 cmdline = sys.argv[1:]
 print(cmdline)
@@ -32,7 +32,7 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     all_files = deserialize_all_files_from_stream(io.BytesIO(body))
     #print(f"received {len(all_files)} files")
 
-    result = all_files['RESULT']
+    result = all_files[RESULT_DUMMY_FILENAME]
     #print("REAULT++++++ " + str(result))
     result = json.loads(result.decode())
 
@@ -45,7 +45,8 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     sys.stdout.write(stdout_str)
 
     for filename in all_files:
-        write_binary_to_file(filename, all_files[filename])
+        if filename != RESULT_DUMMY_FILENAME:
+            write_binary_to_file(filename, all_files[filename])
 
     sys.exit(error_code)
 
