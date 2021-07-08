@@ -123,7 +123,7 @@ class LocalBuildJob:
             args = self.cmdlist[1:]
             ret:Process = await asyncio.subprocess.create_subprocess_exec(stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, *self.cmdlist )
 
-            print("trying to wait")
+            #print("trying to wait")
 
             stdout, stderr = await ret.communicate()
 
@@ -143,6 +143,19 @@ class LocalBuildJob:
         except Exception as e:
             return (-1, json.dumps(f"unknown error during run of {self.cmdlist}, {e}"))
 
+    def get_explicit_output_file(self):
+        gcc_output_path = "-o"
+        next_is_winner = False
+        for param in self.cmdlist:
+            if next_is_winner:
+                return param
+            if param == gcc_output_path:
+                next_is_winner = True
+                pass
+            elif param.startswith(gcc_output_path):
+                return param[len(gcc_output_path):]
+        return None
+
 
     def get_output_path(self):        
         vs_output_path = "/Fo"
@@ -158,6 +171,13 @@ class LocalBuildJob:
         return False
 
     def append_output_files(self, outfiles: Dict[str, bytes]):
+    
+        explicit_out = self.get_explicit_output_file()
+        if explicit_out != None:
+            print("using explicit output: " + explicit_out)
+            outfiles[explicit_out] = read_binary_content(explicit_out)
+            return
+
         is_microsoft = self.is_using_microsoft_compiler()
         for p in self.cmdlist:
             if is_source_file(p):
