@@ -7,13 +7,14 @@ import base64
 from typing import Dict, List, Tuple
 import aiohttp
 from aiohttp.client import ClientSession
+from aiohttp.client_reqrep import ClientResponse
 from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-from file_utils import is_source_file, read_content, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from file_utils import is_source_file, read_content, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -26,17 +27,16 @@ async def install_file(request):
     content = data['content']
 
     install_path = storage_dir() + pathprop
-    filename = path.basename(install_path)
+    #filename = path.basename(install_path)
     install_dir = path.dirname(install_path).replace('/', '\\')
 
-    print('going to install ' + filename)
-    print(" AT  " + install_dir)
+    #print('going to install ' + filename)
+    #print(" AT  " + install_dir)
 
     if not path.isdir(install_dir):
         makedirs(install_dir)
 
-    with open(install_path, 'wb') as fp:
-        fp.write(content)
+    write_binary_to_file(install_path, content)
     return aiohttp.web.Response(text="ok")
 
 
@@ -92,14 +92,14 @@ class LocalBuildJob:
 
 
     def save_files(self):
-        print(str(self.files))
+        #print(str(self.files))
         for it in self.files:
             oldpath = it
             newpath = self.save_file(oldpath, self.files[it])
             self.patch_arg_refering_saved_file(oldpath, newpath)
 
     def patch_arg_refering_saved_file(self, oldpath:str, newpath:str):
-        print("PATCH: " + oldpath + ' -> ' + newpath)
+        #print("PATCH: " + oldpath + ' -> ' + newpath)
         new_cmdline = []
         for orig in self.cmdlist:
             fixed = orig.replace(oldpath, newpath)
@@ -111,7 +111,7 @@ class LocalBuildJob:
         container_dir = path.dirname(container_path)
         makedirs(container_dir, exist_ok=True)
         write_text_to_file(container_path, content)
-        print("wrote " + container_path)
+        #print("wrote " + container_path)
         return container_path
 
 
@@ -129,7 +129,7 @@ class LocalBuildJob:
 
             exit_code = ret.returncode
 
-            print(f"got stdout {stdout}, ret {exit_code}")
+            #print(f"got stdout {stdout}, ret {exit_code}")
 
             result_data = {
                 "exit_code" : exit_code,
@@ -174,7 +174,7 @@ class LocalBuildJob:
     
         explicit_out = self.get_explicit_output_file()
         if explicit_out != None:
-            print("using explicit output: " + explicit_out)
+            #print("using explicit output: " + explicit_out)
             outfiles[explicit_out] = read_binary_content(explicit_out)
             return
 
@@ -182,7 +182,7 @@ class LocalBuildJob:
         for p in self.cmdlist:
             if is_source_file(p):
                 output_file = transform_filename_to_output_name(p, is_microsoft, self.get_output_path())
-                print("output file ==== " + output_file)
+                #print("output file ==== " + output_file)
                 try:
                     outfiles[output_file] = read_binary_content(output_file)
                 except FileNotFoundError as e:
@@ -197,14 +197,16 @@ class LocalBuildJob:
 
         syncer_host = get_syncer_host()
         uri = syncer_host + '/notify_compile_job_done'
-        print("trying " + uri)
+        #print("trying " + uri)
         data = FormData()
         data.add_field('result', result)
         data.add_field('id', self.id)
         for file in outfiles:
             data.add_field(FILE_PREFIX_IN_FORM + file, outfiles[file])
-        r = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
-        print("notifying syncer")
+        r:ClientResponse = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
+        
+        if r.status != 200:
+            print("failed to send " + uri)
 
 
 async def try_fetch_compile_job(session: ClientSession, client_sslcontext, syncer_host, jobid: int) -> LocalBuildJob:    
