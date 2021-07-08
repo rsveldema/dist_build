@@ -1,20 +1,14 @@
-from config import get_build_hosts, get_include_dirs
-import json
+from .config import get_build_hosts, get_include_dirs
 import ssl
 import os
 import logging
 import aiohttp
 import asyncio
 from typing import List, Dict
-import time
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler
-from aiohttp import web
 from aiohttp_session import setup, get_session, session_middleware
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from cryptography import fernet
-import syncer_workqueue
-from file_utils import is_header_file, read_binary_content
+from .file_utils import is_header_file, read_binary_content
+from .syncer_workqueue import wait_for_incoming_requests
 
 ssl.match_hostname = lambda cert, hostname: True
 
@@ -99,7 +93,7 @@ loop.run_until_complete(sendData(loop))
 print("waiting for dir-changes")
 #loop.run_forever()
 
-syncer_workqueue.wait_for_incoming_requests()
+wait_for_incoming_requests()
 
 
 

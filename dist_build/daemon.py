@@ -12,9 +12,9 @@ from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from config import get_syncer_host, num_available_cores, storage_dir
+from .config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-from file_utils import is_source_file, read_content, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from .file_utils import is_source_file, read_content, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -116,6 +116,9 @@ class LocalBuildJob:
 
 
     async def exec_cmd(self) -> Tuple[int, str]:
+        exit_code = -1
+        stderr = ""
+        stdout = ""
         try:
             print("EXEC: " + str(self.cmdlist))
 
@@ -131,18 +134,22 @@ class LocalBuildJob:
 
             #print(f"got stdout {stdout}, ret {exit_code}")
 
-            result_data = {
-                "exit_code" : exit_code,
-                "stderr" : stderr.decode(),
-                "stdout" : stdout.decode()
-            }
+            stdout = stdout.decode()
+            stderr = stderr.decode()
 
-            return (ret.returncode, json.dumps(result_data))
         except FileNotFoundError as e:
-            return (-1, json.dumps(f"failed to find file: {self.cmdlist}"))
+            stderr = f"failed to find file: {self.cmdlist}"
         except Exception as e:
-            return (-1, json.dumps(f"unknown error during run of {self.cmdlist}, {e}"))
+            stderr = f"unknown error during run of {self.cmdlist}, {e}"
 
+        result_data = {
+            "exit_code" : exit_code,
+            "stderr" : stderr,
+            "stdout" : stdout
+        }
+
+        return (exit_code, json.dumps(result_data))
+        
     def get_explicit_output_file(self):
         gcc_output_path = "-o"
         next_is_winner = False

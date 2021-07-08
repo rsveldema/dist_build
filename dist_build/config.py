@@ -1,6 +1,6 @@
-from os import getenv
+from os import getenv, makedirs
 from typing import List
-from file_utils import read_content
+from .file_utils import read_content
 import json
 import multiprocessing
 
@@ -10,11 +10,13 @@ def storage_dir():
     if home == None:
         home = "c:/"
     storage = home + '/dist_build'
+    makedirs(storage, exist_ok=True)
     return storage
 
 
 def read_config():
-    content = read_content('config.json')
+    content = read_content(storage_dir() + '/config.json')
+    #print("config content ==  " + str(content))
     return json.loads(content)
         
 

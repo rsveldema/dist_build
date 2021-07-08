@@ -1,5 +1,4 @@
 import os
-from sys import path
 from typing import Dict
 from aiohttp import web
 import io
