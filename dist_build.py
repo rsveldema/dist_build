@@ -31,9 +31,23 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     body = await r.read()
     all_files = deserialize_all_files_from_stream(io.BytesIO(body))
     #print(f"received {len(all_files)} files")
+
+    result = all_files['RESULT']
+    #print("REAULT++++++ " + str(result))
+    result = json.loads(result.decode())
+
+    error_code = result["exit_code"]
+    stdout_str = result["stdout"]
+    stderr_str = result["stderr"]
+    #print("RESULT = " + str(error_code) + ", STDOUT = " + stdout + ", STDERR = " + stderr)
+
+    sys.stderr.write(stderr_str)
+    sys.stdout.write(stdout_str)
+
     for filename in all_files:
         write_binary_to_file(filename, all_files[filename])
 
+    sys.exit(error_code)
 
 
 async def sendDataToSyncer(loop, cmdline, syncer_host):

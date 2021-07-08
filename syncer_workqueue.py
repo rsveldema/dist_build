@@ -65,7 +65,7 @@ async def push_compile_job(request):
     stream_response = web.StreamResponse()
     stream_response.enable_chunked_encoding()
     await stream_response.prepare(request)    
-    await serialize_all_files_to_stream(stream_response, to_send)
+    await serialize_all_files_to_stream(stream_response, to_send, job.result)
     await stream_response.write_eof()
     return stream_response
 

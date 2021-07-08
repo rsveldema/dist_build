@@ -63,7 +63,9 @@ def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_p
 
 
 
-async def serialize_all_files_to_stream(stream_response: web.StreamResponse, outputs: Dict[str, bytes]):
+async def serialize_all_files_to_stream(stream_response: web.StreamResponse, outputs: Dict[str, bytes], result:str):
+    await stream_response.write(len(result).to_bytes(4, 'little'))
+    await stream_response.write(result.encode('utf-8'))
     for out_file in outputs:
         data = outputs[out_file]
         str_len = len(out_file)
@@ -91,7 +93,10 @@ def read_bytes_from_stream(inData: io.BytesIO):
 
 def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
     ret: Dict[str, bytes] = {}
- 
+
+    result = read_bytes_from_stream(inData)
+    ret['RESULT'] = result
+
     while True:
         filename = read_bytes_from_stream(inData)
         if filename == None:

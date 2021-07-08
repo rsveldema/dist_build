@@ -1,6 +1,5 @@
 # Todos
 
-- use all cores on a build machine
 - support gcc/g++/clang (currently only tested with MSVC)
 - a dashboard
 - put the daemon and syncer in containers

@@ -1,9 +1,10 @@
+from asyncio.subprocess import Process
 from os import mkdir, getenv, path, makedirs, chdir
 import ssl
 import typing
 import json
 import base64
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.formdata import FormData
@@ -68,8 +69,8 @@ class LocalBuildJob:
     async def run(self):
         self.save_files()
         self.change_include_dirs()
-        result = await self.exec_cmd()
-        await self.send_reply(result)
+        (retcode, result) = await self.exec_cmd()        
+        await self.send_reply(retcode, result)
 
     def change_include_dirs(self):
         new_cmdline:List[str] = []
@@ -85,7 +86,6 @@ class LocalBuildJob:
             elif orig.startswith('-I'):
                 orig = orig[2:]
                 orig = '-I' + storage_dir() + orig
-
 
             new_cmdline.append(orig)   
         self.cmdlist = new_cmdline
@@ -115,18 +115,33 @@ class LocalBuildJob:
         return container_path
 
 
-    async def exec_cmd(self) -> str:
+    async def exec_cmd(self) -> Tuple[int, str]:
         try:
             print("EXEC: " + str(self.cmdlist))
 
             program = self.cmdlist[0]
             args = self.cmdlist[1:]
-            ret = await asyncio.subprocess.create_subprocess_exec(program=program, args=args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-            return json.dumps((ret.returncode, str(ret.stderr) + str(ret.stdout)))
+            ret:Process = await asyncio.subprocess.create_subprocess_exec(stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, *self.cmdlist )
+
+            print("trying to wait")
+
+            stdout, stderr = await ret.communicate()
+
+            exit_code = ret.returncode
+
+            print(f"got stdout {stdout}, ret {exit_code}")
+
+            result_data = {
+                "exit_code" : exit_code,
+                "stderr" : stderr.decode(),
+                "stdout" : stdout.decode()
+            }
+
+            return (ret.returncode, json.dumps(result_data))
         except FileNotFoundError as e:
-            return json.dumps(f"failed to find file: {self.cmdlist}")
-        except:
-            return json.dumps(f"unknown error during run of {self.cmdlist}")
+            return (-1, json.dumps(f"failed to find file: {self.cmdlist}"))
+        except Exception as e:
+            return (-1, json.dumps(f"unknown error during run of {self.cmdlist}, {e}"))
 
 
     def get_output_path(self):        
@@ -154,10 +169,11 @@ class LocalBuildJob:
                     print("ERROR: failed to find output file: " + output_file)
 
 
-    async def send_reply(self, result):
+    async def send_reply(self, retcode, result:str):
         outfiles: typing.Dict[str, bytes] = {}
 
-        self.append_output_files(outfiles)
+        if retcode == 0:
+            self.append_output_files(outfiles)
 
         syncer_host = get_syncer_host()
         uri = syncer_host + '/notify_compile_job_done'

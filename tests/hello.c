@@ -1,4 +1,9 @@
 #include <stdio.h>
+a
+a
+a
+a
+
 
 int main() 
 { 
