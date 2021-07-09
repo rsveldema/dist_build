@@ -21,7 +21,21 @@ def filename_ends_with(filename, suffix_list):
             return True
     return False
 
+def is_a_directory_path(dir:str):
+    return dir.endswith('/') or dir.endswith('\\')
+
+def make_dir_but_last(dir:str):
+    dir = dir.strip()
+    if not is_a_directory_path(dir):
+        last1 = dir.rfind('/')
+        last2 = dir.rfind('\\')
+        last = max(last1, last2)
+        if last > 0:
+            dir = dir[:last]
+    os.makedirs(dir, exist_ok=True)
+
 def is_source_file(filename:str):
+    filename = filename.strip()
     return filename_ends_with(filename.lower(), source_suffix_list)
     
 
@@ -46,6 +60,9 @@ def write_binary_to_file(container_path, content):
 
 
 def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_path: str):
+
+    filename = uniform_filename(filename)
+
     prefix = ""
     rslash_pos = filename.rfind('\\')
     lslash_pos = filename.rfind('/')
@@ -73,6 +90,7 @@ def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_p
     if prefix != None and prefix != "":
         prefix += os.path.pathsep
 
+    print("CREATINGGGGG: " + prefix + filename[:dot_pos] + ext)
     return prefix + filename[:dot_pos] + ext
 
 

@@ -14,7 +14,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from .config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-from .file_utils import is_source_file, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from .file_utils import is_a_directory_path, is_source_file, make_dir_but_last, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -69,8 +69,41 @@ class LocalBuildJob:
     async def run(self):
         self.save_files()
         self.change_include_dirs()
+        self.change_debug_dirs()
+        self.change_output_dirs()
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
+
+    def change_debug_dirs(self):
+        # when seeing: /FdCMakeFiles\cmTC_ea5a2.dir
+        # we need to create this dir in the build dir         
+        new_cmdline:List[str] = []
+        opt_prefix = '/Fd'
+        for orig in self.cmdlist:       
+            if orig.startswith(opt_prefix):
+                orig = orig[len(opt_prefix):]
+                orig = uniform_filename(orig)
+                new_debug_dir = storage_dir() + '/' + orig
+                orig = opt_prefix + new_debug_dir
+                makedirs(new_debug_dir, exist_ok=True)
+            new_cmdline.append(orig)   
+        self.cmdlist = new_cmdline
+
+    def change_output_dirs(self):
+        # when seeing: /FdCMakeFiles\cmTC_ea5a2.dir
+        # we need to create this dir in the build dir         
+        new_cmdline:List[str] = []
+        opt_prefix = '/Fo'
+        for orig in self.cmdlist:       
+            if orig.startswith(opt_prefix):
+                orig = orig[len(opt_prefix):]
+                new_debug_dir = uniform_filename(orig)
+                #new_debug_dir = storage_dir() + '/' + orig
+                orig = opt_prefix + new_debug_dir
+                if make_dir_but_last(new_debug_dir):
+                    makedirs(new_debug_dir, exist_ok=True)
+            new_cmdline.append(orig)   
+        self.cmdlist = new_cmdline
 
     def change_include_dirs(self):
         new_cmdline:List[str] = []
@@ -105,7 +138,10 @@ class LocalBuildJob:
         #print("PATCH: " + oldpath + ' -> ' + newpath)
         new_cmdline = []
         for orig in self.cmdlist:
-            fixed = orig.replace(oldpath, newpath)
+            if orig == oldpath:
+                fixed = orig.replace(oldpath, newpath)
+            else:
+                fixed = orig
             new_cmdline.append( fixed )
         self.cmdlist = new_cmdline
 
@@ -156,6 +192,8 @@ class LocalBuildJob:
         
     def get_explicit_output_file(self):
         gcc_output_path = "-o"
+        msvc_output_path = "/Fo"
+
         next_is_winner = False
         for param in self.cmdlist:
             if next_is_winner:
@@ -165,13 +203,15 @@ class LocalBuildJob:
                 pass
             elif param.startswith(gcc_output_path):
                 return param[len(gcc_output_path):]
+            elif param.startswith(msvc_output_path) and not is_a_directory_path(param):
+                return param[len(msvc_output_path):]
         return None
 
 
     def get_output_path(self):        
         vs_output_path = "/Fo"
         for param in self.cmdlist:
-            if param.startswith(vs_output_path):
+            if param.startswith(vs_output_path) and is_a_directory_path(param):
                 return param[len(vs_output_path):]
         return None
 
@@ -184,7 +224,7 @@ class LocalBuildJob:
     def append_output_files(self, outfiles: Dict[str, bytes]):    
         explicit_out = self.get_explicit_output_file()
         if explicit_out != None:
-            #print("using explicit output: " + explicit_out)
+            print("using explicit output: " + explicit_out)
             outfiles[explicit_out] = read_binary_content(explicit_out)
             return
 
@@ -204,6 +244,8 @@ class LocalBuildJob:
 
         if retcode == 0:
             self.append_output_files(outfiles)
+
+        #print(f"output files are {outfiles}")
 
         syncer_host = get_syncer_host()
         uri = syncer_host + '/notify_compile_job_done'

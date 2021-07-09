@@ -5,7 +5,8 @@
     "syncer": "https://localhost:5000",
     "dirs": [
         "/Users/rsvel/source/repos/include_syncer/tests",
-        "/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt"
+        "/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt",
+        "/develop/paul/modules/S16/Core"
     ],
     "num_cores": 4
 }

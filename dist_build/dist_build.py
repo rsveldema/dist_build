@@ -28,6 +28,7 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
         else:
             new_cmdline.append(opt)
     cmdline = new_cmdline
+    
 
     data = aiohttp.FormData()
     data.add_field('files', json.dumps(files))
