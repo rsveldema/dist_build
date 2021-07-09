@@ -14,7 +14,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from .config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-from .file_utils import is_source_file, read_content, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from .file_utils import is_source_file, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -79,12 +79,14 @@ class LocalBuildJob:
             
             if found_include_directive:
                 found_include_directive = False
+                orig = uniform_filename(orig)
                 orig = storage_dir() + orig
 
             if orig == '/I' or orig == '-I':
                found_include_directive = True
             elif orig.startswith('-I'):
                 orig = orig[2:]
+                orig = uniform_filename(orig)
                 orig = '-I' + storage_dir() + orig
 
             new_cmdline.append(orig)   
@@ -96,6 +98,7 @@ class LocalBuildJob:
         for it in self.files:
             oldpath = it
             newpath = self.save_file(oldpath, self.files[it])
+            print(f"SAVE FILES ====> {oldpath} vs {newpath}")
             self.patch_arg_refering_saved_file(oldpath, newpath)
 
     def patch_arg_refering_saved_file(self, oldpath:str, newpath:str):
@@ -107,6 +110,7 @@ class LocalBuildJob:
         self.cmdlist = new_cmdline
 
     def save_file(self, old_path, content) -> str:
+        old_path = uniform_filename(old_path)
         container_path = storage_dir() + '/' + old_path
         container_dir = path.dirname(container_path)
         makedirs(container_dir, exist_ok=True)
@@ -177,8 +181,7 @@ class LocalBuildJob:
             return True        
         return False
 
-    def append_output_files(self, outfiles: Dict[str, bytes]):
-    
+    def append_output_files(self, outfiles: Dict[str, bytes]):    
         explicit_out = self.get_explicit_output_file()
         if explicit_out != None:
             #print("using explicit output: " + explicit_out)

@@ -9,18 +9,24 @@ source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 RESULT_DUMMY_FILENAME="RESULT"
 FILE_PREFIX_IN_FORM="FILE:"
 
+def uniform_filename(filename):
+    if filename.lower().startswith("c:"):
+        filename = filename[2:]
+    return filename
+
 def filename_ends_with(filename, suffix_list):
+    filename = filename.lower()
     for h in suffix_list:
         if filename.endswith(h):
             return True
     return False
 
 def is_source_file(filename:str):
-    return filename_ends_with(filename, source_suffix_list)
+    return filename_ends_with(filename.lower(), source_suffix_list)
     
 
 def is_header_file(filename):
-    return filename_ends_with(filename, header_suffix_list)
+    return filename_ends_with(filename.lower(), header_suffix_list)
  
 def read_content(filename: str):
     with open(filename, 'r') as fp:

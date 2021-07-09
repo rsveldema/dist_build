@@ -10,16 +10,25 @@ import asyncio
 import time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-from .file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, write_binary_to_file
+from .file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, uniform_filename, write_binary_to_file
 
 
 
 async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     uri = syncer_host + '/push_compile_job'
     files = {}
+
+    # Strip away c: and add all .c/.cpp files to the 'files' dict
+    new_cmdline = []
     for opt in cmdline:
         if is_source_file(opt):
-            files[opt] = read_content(opt)
+            uniform = uniform_filename(opt)
+            files[uniform] = read_content(opt)
+            new_cmdline.append(uniform)
+        else:
+            new_cmdline.append(opt)
+    cmdline = new_cmdline
+
     data = aiohttp.FormData()
     data.add_field('files', json.dumps(files))
     data.add_field('cmdline', json.dumps(cmdline))
