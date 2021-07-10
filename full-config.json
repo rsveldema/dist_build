@@ -6,7 +6,8 @@
     "dirs": [
         "/Users/rsvel/source/repos/include_syncer/tests",
         "/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt",
-        "/develop/paul/modules/S16/Core"
+        "/develop/paul/modules/S16/Core",
+        "/tools/WindowsKit"
     ],
     "num_cores": 4
 }

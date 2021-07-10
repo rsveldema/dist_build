@@ -36,9 +36,9 @@ class RemoteJob:
         self.is_done = True
 
     async def done(self):
-        print("done flag = " + str(self.is_done))
+        #print("done flag = " + str(self.is_done))
         while not self.is_done:
-            print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
+            #print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
             await asyncio.sleep(1)
 
 job_queue: List[RemoteJob] = []
@@ -56,7 +56,7 @@ async def push_compile_job(request):
 
     print("going to compile: " + cmdline)
     await job.done() 
-    print("compile done: " + cmdline)
+    #print("compile done: " + cmdline)
     #return web.Response(text=job.result)
     
     #print(f"GO TO SEND: {job.to_send}")

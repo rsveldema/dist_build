@@ -1,4 +1,6 @@
 from asyncio.subprocess import Process
+from dist_build.serializer import Serializer
+from dist_build.options import DistBuildOptions
 from os import mkdir, getenv, path, makedirs, chdir
 import ssl
 import typing
@@ -14,36 +16,48 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from .config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
+import os
 from .file_utils import is_a_directory_path, is_source_file, make_dir_but_last, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
+options: DistBuildOptions
 
 
-async def install_file(request):    
+async def install_file(request: aiohttp.RequestInfo):    
     data = await request.post()
-    pathprop = data['path']
-    content = data['content']
+    raw_content = data['content']
 
-    install_path = storage_dir() + pathprop
-    #filename = path.basename(install_path)
-    install_dir = path.dirname(install_path).replace('/', '\\')
+    serializer = Serializer()
+    ret = serializer.extract(raw_content)
 
-    #print('going to install ' + filename)
-    #print(" AT  " + install_dir)
+    for pathprop in ret.keys():
+        content = ret[pathprop]
 
-    if not path.isdir(install_dir):
-        makedirs(install_dir)
+        install_path = os.path.join(storage_dir(), pathprop)
+        install_dir = path.dirname(install_path).replace('/', '\\')
 
-    write_binary_to_file(install_path, content)
+        #if install_path.find("inerror.h") >= 0:
+        #print("INSTALL DIR FOUND FOR : " + install_path)
+
+        if options.verbose():
+            print('going to install ' + path.basename(install_path))
+            print(" AT  " + install_dir)
+
+        if not path.isdir(install_dir):
+            makedirs(install_dir)
+
+        write_binary_to_file(install_path, content)
+
     return aiohttp.web.Response(text="ok")
 
 
 
 
-async def make_app():
-    app = aiohttp.web.Application()
+async def make_app(options: DistBuildOptions):
+    # this server will only accept header files. We'll assume a 15 MByte upper limit on those.
+    app = aiohttp.web.Application(client_max_size = 1024 * 1024 * 16)
     # secret_key must be 32 url-safe base64-encoded bytes
     fernet_key = fernet.Fernet.generate_key()
     secret_key = base64.urlsafe_b64decode(fernet_key)
@@ -57,14 +71,17 @@ class LocalBuildJob:
     id: str
     env: typing.Dict[str, str]
     files: typing.Dict[str, str]
+    options: DistBuildOptions
 
-    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str]):
+
+    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str], options: DistBuildOptions):
         self.cmdlist = json.loads(cmdline)
         self.env = env
         self.id = id
         self.files = json.loads(files)
         self.client_sslcontext = client_sslcontext
         self.session = session
+        self.options = options
         
     async def run(self):
         self.save_files()
@@ -305,15 +322,27 @@ async def poll_job_queue(jobid: int):
             await asyncio.sleep(1)
 
 
-server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
 
-print("CHANGING RUN DIR TO " + storage_dir())
-chdir(storage_dir())
 
-loop = asyncio.get_event_loop()
+def main():
+    global server_sslcontext, options
+    
+    options = DistBuildOptions()
 
-for i in range(num_available_cores()):
-    loop.create_task(poll_job_queue(i))
+    server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
 
-aiohttp.web.run_app(make_app(), ssl_context=server_sslcontext)
+    print("CHANGING RUN DIR TO " + storage_dir())
+    chdir(storage_dir())
+
+
+    loop = asyncio.get_event_loop()
+
+    for i in range(1): #num_available_cores()):
+        loop.create_task(poll_job_queue(i))
+
+    aiohttp.web.run_app(make_app(options), ssl_context=server_sslcontext)
+
+
+main()
+

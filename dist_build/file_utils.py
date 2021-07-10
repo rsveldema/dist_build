@@ -24,23 +24,61 @@ def filename_ends_with(filename, suffix_list):
 def is_a_directory_path(dir:str):
     return dir.endswith('/') or dir.endswith('\\')
 
+def get_last_path_component(dir:str):
+    dir = dir.strip()
+    last1 = dir.rfind('/')
+    last2 = dir.rfind('\\')
+    last = max(last1, last2)
+    if last > 0:
+        dir = dir[last+1:]
+    return dir
+
+def get_all_but_last_path_component(dir:str):
+    dir = dir.strip()
+    last1 = dir.rfind('/')
+    last2 = dir.rfind('\\')
+    last = max(last1, last2)
+    if last > 0:
+        dir = dir[:last]
+    return dir
+
 def make_dir_but_last(dir:str):
     dir = dir.strip()
     if not is_a_directory_path(dir):
-        last1 = dir.rfind('/')
-        last2 = dir.rfind('\\')
-        last = max(last1, last2)
-        if last > 0:
-            dir = dir[:last]
+        dir = get_all_but_last_path_component(dir)
     os.makedirs(dir, exist_ok=True)
+
+infra_files = ["FAQ", "README", "ChangeLog","INDEX", "Makefile", "Jamfile", "LICENSE", "Doxyfile", "GNUmakefile", "boost-no-inspect", "TODO", "configure", "Jenkinsfile"]
+
+def is_infrastructure_file(filename:str):
+    filename = filename.lower()
+    filename = get_last_path_component(filename)
+    if filename.startswith("."):
+        return True
+    for i in infra_files:
+        i = i.lower()
+        if filename.find(i) >= 0:
+            return True
+    return False
 
 def is_source_file(filename:str):
     filename = filename.strip()
+    if is_infrastructure_file(filename):
+        return False
     return filename_ends_with(filename.lower(), source_suffix_list)
     
-
 def is_header_file(filename):
-    return filename_ends_with(filename.lower(), header_suffix_list)
+    filename = filename.strip()
+    filename = get_last_path_component(filename)
+    if is_infrastructure_file(filename):
+        return False
+    if filename_ends_with(filename.lower(), header_suffix_list):
+        return True
+    # new style header files such as 'iostream' and 'cstddef'
+    if filename.find(".") < 0:
+        #print("its a header: " + filename)
+        return True
+    return False
  
 def read_content(filename: str):
     with open(filename, 'r') as fp:
@@ -111,6 +149,19 @@ async def serialize_all_files_to_stream(stream_response: web.StreamResponse, out
         await stream_response.write(data)
 
 
+"""
+same as the serialize_all_files_to_streams's loop body, compatiable to deserialize_all_files_from_stream_no_meta
+"""        
+def serialize_file_to_stream(data:bytearray, path, content):
+        data.extend(len(path).to_bytes(4, 'little'))
+        data.extend(path.encode('utf-8'))
+        data.extend(len(content).to_bytes(4, 'little'))
+        data.extend(content)
+
+
+"""
+compatible to serialize_all_files_to_stream's single string write
+"""
 def read_bytes_from_stream(inData: io.BytesIO):    
     str_len_buffer = inData.read(4)
     if len(str_len_buffer) == 0:
@@ -123,16 +174,20 @@ def read_bytes_from_stream(inData: io.BytesIO):
     str = inData.read(str_len)
     return str
 
-def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
-    ret: Dict[str, bytes] = {}
 
-    result = read_bytes_from_stream(inData)
-    ret[RESULT_DUMMY_FILENAME] = result
+deserialize_ix = 0
 
+"""
+compatible to serialize_all_files_to_stream's loop
+"""
+def deserialize_all_files_from_stream_no_meta(inData: io.BytesIO, ret: Dict[str, bytes]) -> None:
+    global deserialize_ix
     while True:
         filename = read_bytes_from_stream(inData)
         if filename == None:
             break
+
+        filename = filename.decode('utf-8')
 
         content = read_bytes_from_stream(inData)
         if content == None:
@@ -140,6 +195,18 @@ def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
         
         ret[filename] = content
 
+        print(f"{deserialize_ix}: DESERIALIZE {filename}")
+        deserialize_ix += 1
+
+
+"""
+compatible to serialize_all_files_to_stream. The meta-data is stored in ret['RESULT'].
+"""
+def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
+    ret: Dict[str, bytes] = {}
+
+    result = read_bytes_from_stream(inData)
+    ret[RESULT_DUMMY_FILENAME] = result
+
+    deserialize_all_files_from_stream_no_meta(inData, ret)
     return ret
-
-

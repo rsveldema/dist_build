@@ -8,8 +8,8 @@
             "name": "Python: syncer",
             "type": "python",
             "request": "launch",
-            "program": "syncer.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "module": "dist_build.syncer"
         },  {
             "name": "Python: daemon",
             "type": "python",

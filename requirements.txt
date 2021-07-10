@@ -6,3 +6,4 @@ watchdog
 ## for the daemon
 flask
 pyopenssl
+tqdm

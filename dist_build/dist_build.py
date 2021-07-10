@@ -42,7 +42,7 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
 
     result = all_files[RESULT_DUMMY_FILENAME]
     #print("REAULT++++++ " + str(result))
-    result = json.loads(result.decode())
+    result = json.loads(result)
 
     error_code = result["exit_code"]
     stdout_str = result["stdout"]
