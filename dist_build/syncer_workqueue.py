@@ -17,6 +17,7 @@ class RemoteJob:
     files: Dict[str, str]
     to_send : Dict[str, bytes]
     cmdline: str
+    machine_id: str
 
     def __init__(self, cmdline:str, env: dict, files: Dict[str, str]):
         global job_counter
@@ -26,9 +27,17 @@ class RemoteJob:
         self.is_done = False
         self.id = str(job_counter)
         job_counter += 1
+        self.machine_id = None
+
+    def kill(self):
+        print(f"killing job at {self.machine_id}")
+        pass
 
     def get_dict(self):
         return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files}
+
+    def set_machine_id(self, machine_id):
+        self.machine_id = machine_id
 
     async def notify_done(self, result, to_send: Dict[str, bytes]):
         self.to_send = to_send
@@ -43,6 +52,13 @@ class RemoteJob:
 
 job_queue: List[RemoteJob] = []
 jobs_in_progress: Dict[str, RemoteJob] = {}
+
+async def kill_compile_jobs(request):
+    for j in jobs_in_progress:
+        await j.kill()
+    jobs_in_progress.clear()
+    job_queue.clear()
+
 
 async def push_compile_job(request):    
     data = await request.post()
@@ -94,10 +110,16 @@ async def notify_compile_job_done(request):
     await job.notify_done(result, to_send)
     return web.Response(text="ok")
 
+
 async def pop_compile_job(request):
-    for i in range(0, 10):
+    payload: List[str] = await request.post()
+    machine_id = payload['machine_id']
+
+    for _retries in range(0, 10):
         if len(job_queue) > 0:
             new_job = job_queue.pop()
+            print(f"MACHINE ID = {machine_id}")
+            new_job.set_machine_id(machine_id)
             js = json.dumps(new_job.get_dict())
             return web.Response(text=js)
         await asyncio.sleep(1)
@@ -111,6 +133,7 @@ async def make_app():
     setup(app, EncryptedCookieStorage(secret_key))
     app.add_routes([
         web.post('/push_compile_job', push_compile_job),
+        web.post('/kill_compile_jobs', kill_compile_jobs),
         web.post('/pop_compile_job', pop_compile_job),
         web.post('/notify_compile_job_done', notify_compile_job_done),
     ])

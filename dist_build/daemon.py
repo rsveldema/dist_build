@@ -1,4 +1,5 @@
 from asyncio.subprocess import Process
+import socket
 from dist_build.serializer import Serializer
 from dist_build.options import DistBuildOptions
 from os import mkdir, getenv, path, makedirs, chdir
@@ -17,7 +18,7 @@ from cryptography import fernet
 from .config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
 import os
-from .file_utils import is_a_directory_path, is_source_file, make_dir_but_last, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from .file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -35,11 +36,14 @@ async def install_file(request: aiohttp.RequestInfo):
     for pathprop in ret.keys():
         content = ret[pathprop]
 
-        install_path = os.path.join(storage_dir(), pathprop)
+        install_path = path_join(storage_dir(), pathprop)
         install_dir = path.dirname(install_path).replace('/', '\\')
 
-        #if install_path.find("inerror.h") >= 0:
-        #print("INSTALL DIR FOUND FOR : " + install_path)
+        #if install_path.find("winerror.h") >= 0:
+        #print(f"INSTALL DIR FOUND FOR {install_path} and {storage_dir()}")
+
+        assert(install_path.find("dist_build") > 0)
+
 
         if options.verbose():
             print('going to install ' + path.basename(install_path))
@@ -281,7 +285,8 @@ class LocalBuildJob:
 async def try_fetch_compile_job(session: ClientSession, client_sslcontext, syncer_host, jobid: int) -> LocalBuildJob:    
     uri = syncer_host + '/pop_compile_job'
     print(f"job {jobid}: trying " + uri)
-    data=FormData()
+    data = FormData()
+    data.add_field('machine_id', socket.gethostname()) 
     try:
         client_response = await session.post(uri, data = data, ssl=client_sslcontext)
     except:
@@ -300,7 +305,7 @@ async def try_fetch_compile_job(session: ClientSession, client_sslcontext, synce
             id = payload['id']
             files = payload['files']
             #print("remote compile activated: " + cmdline)
-            return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files)
+            return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files, options)
     except ValueError as e:
         print("failed to decode json: " + e)
     return None
@@ -334,7 +339,6 @@ def main():
 
     print("CHANGING RUN DIR TO " + storage_dir())
     chdir(storage_dir())
-
 
     loop = asyncio.get_event_loop()
 

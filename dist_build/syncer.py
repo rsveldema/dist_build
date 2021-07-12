@@ -1,18 +1,17 @@
 from aiohttp.client import ClientSession
-from aiohttp.client_exceptions import SSLContext
 from dist_build.serializer import Serializer
 from dist_build.options import DistBuildOptions
-from re import fullmatch
 from .config import get_build_hosts, get_include_dirs
 import ssl
 import os
+import sys
 import logging
 import aiohttp
 import asyncio
 from typing import List, Dict, Tuple
 from watchdog.observers import Observer
 from aiohttp_session import setup, get_session, session_middleware
-from .file_utils import is_header_file, read_binary_content
+from .file_utils import is_header_file, path_join, read_binary_content
 from .syncer_workqueue import wait_for_incoming_requests
 from tqdm import tqdm
 
@@ -35,7 +34,7 @@ async def do_broadcast_of_serialized_data(session: aiohttp.ClientSession, serial
             post_result = post_result.decode('utf-8')
             if post_result != "ok":
                 print(f"post result = {post_result} when trying to send a header file chunk to daemon {host}")
-                os.exit(1)
+                sys.exit(1)
 
         # print("result = " + str(r))
     serializer.clear()
@@ -53,7 +52,10 @@ async def broadcast_files(session: aiohttp.ClientSession, hosts: List[str], dir:
 
 
     for filename in tqdm(files):
-        path = os.path.join(dir, filename)
+        if dir == "":
+            path = filename
+        else:
+            path = path_join(dir, filename)
         content = read_binary_content(path)   
 
         serializer.add(path, content)
@@ -64,7 +66,10 @@ async def broadcast_files(session: aiohttp.ClientSession, hosts: List[str], dir:
         await do_broadcast_of_serialized_data(session, serializer, hosts, sslcontext)
 
     for filename in tqdm(files):
-        path = os.path.join(dir, filename)        
+        if dir == "":
+            path = filename
+        else:
+            path = path_join(dir, filename)
         scheduled_broadcast_tasks[path] = False
 
 
@@ -85,7 +90,7 @@ async def install_directory(session: aiohttp.ClientSession, hosts: List[str], di
             print("IGNORE: " + item)
             continue
   
-        fullpath = os.path.join(dir, item)
+        fullpath = path_join(dir, item)
         #print(f"EXAMINE: {fullpath}")
 
         if os.path.isfile(fullpath):
@@ -93,9 +98,18 @@ async def install_directory(session: aiohttp.ClientSession, hosts: List[str], di
                 #print('Copying header: ' + item)
                 if os.path.isfile(fullpath):
                     files.append(item)
+            else:
+                #print(f"skipping non-header: {item}")
+                pass
         elif os.path.isdir(fullpath):
-            if not is_ignorable_dir(item):
+            if is_ignorable_dir(item):
+                print(f"ignorable dir: {item}")
+            else:
+                #print(f"recursing into {item}")
                 await install_directory(session, hosts, fullpath, sslcontext, scheduled_broadcast_tasks, options, serializer)
+        else:
+            print(f"WTF? not a FILE or DIR {fullpath}")
+            
 
     await broadcast_files(session, hosts, dir, files, sslcontext, scheduled_broadcast_tasks, options, serializer)
         
@@ -116,18 +130,27 @@ class FileSystemObserver:
 
     def dispatch(self, evt):
         src_path = evt.src_path
+        if os.path.isdir(src_path):
+            print("IGNORING DIR EVENT: " + src_path)
+            return
+
+        if not is_header_file(src_path):
+            print("IGNORING NON HEADER: " + src_path)
+            return
+
         print("got file system evt: " + src_path)
 
         serializer = Serializer()
 
+        dir = ""
         files = [src_path]
 
         if not src_path in self.scheduled_broadcast_tasks:
-            asyncio.run_coroutine_threadsafe(broadcast_files(self.session, self.hosts, files, self.sslcontext, self.scheduled_broadcast_tasks, serializer), self.loop)
+            asyncio.run_coroutine_threadsafe(broadcast_files(self.session, self.hosts, dir, files, self.sslcontext, self.scheduled_broadcast_tasks, self.options, serializer), self.loop)
         elif not self.scheduled_broadcast_tasks[src_path]:
             if os.path.isfile(src_path) and is_header_file(src_path):
                 self.scheduled_broadcast_tasks[src_path] = True
-                asyncio.run_coroutine_threadsafe(broadcast_files(self.session, self.hosts, files, self.sslcontext, self.scheduled_broadcast_tasks, serializer), self.loop)
+                asyncio.run_coroutine_threadsafe(broadcast_files(self.session, self.hosts, dir, files, self.sslcontext, self.scheduled_broadcast_tasks, self.options, serializer), self.loop)
         else:
             # src_path is in self.scheduled_broadcast_tasks
             #if self.options.verbose():
@@ -155,27 +178,31 @@ async def sendData(loop, hosts, scheduled_broadcast_tasks, options: DistBuildOpt
     observer.start()
 
 
-def main():
+async def async_main(loop):
     hosts = get_build_hosts()
 
     options = DistBuildOptions()
 
     session = aiohttp.ClientSession()    
 
+    scheduled_broadcast_tasks: Dict[str, bool] = {}
+
+    await sendData(loop, hosts, scheduled_broadcast_tasks, options, session)
+
+    print("waiting for dir-changes")
+
+
+
+
+def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    scheduled_broadcast_tasks: Dict[str, bool] = {}
-
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(sendData(loop, hosts, scheduled_broadcast_tasks, options, session))
-
-    print("waiting for dir-changes")
-    #loop.run_forever()
+    loop.run_until_complete(async_main(loop))
 
     wait_for_incoming_requests()
-
 
 
 main()

@@ -3,7 +3,7 @@ from typing import Dict
 from aiohttp import web
 import io
 
-header_suffix_list = ['.h', '.hh', '.hxx', '.hpp']
+header_suffix_list = ['.h', '.hh', '.hxx', '.hpp', '.ver']
 source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 
 RESULT_DUMMY_FILENAME="RESULT"
@@ -48,16 +48,21 @@ def make_dir_but_last(dir:str):
         dir = get_all_but_last_path_component(dir)
     os.makedirs(dir, exist_ok=True)
 
-infra_files = ["FAQ", "README", "ChangeLog","INDEX", "Makefile", "Jamfile", "LICENSE", "Doxyfile", "GNUmakefile", "boost-no-inspect", "TODO", "configure", "Jenkinsfile"]
+infra_files_substrings = ["README", "Makefile", "Doxyfile", "GNUmakefile", "boost-no-inspect"]
+infra_files_exact = ["FAQ", "ChangeLog", "INDEX", "Makefile", "Jamfile", "LICENSE", "Doxyfile", "TODO", "configure", "Jenkinsfile"]
 
 def is_infrastructure_file(filename:str):
     filename = filename.lower()
     filename = get_last_path_component(filename)
     if filename.startswith("."):
         return True
-    for i in infra_files:
+    for i in infra_files_substrings:
         i = i.lower()
         if filename.find(i) >= 0:
+            return True
+    for i in infra_files_exact:
+        i = i.lower()
+        if i == filename:
             return True
     return False
 
@@ -195,7 +200,10 @@ def deserialize_all_files_from_stream_no_meta(inData: io.BytesIO, ret: Dict[str,
         
         ret[filename] = content
 
-        print(f"{deserialize_ix}: DESERIALIZE {filename}")
+        #if filename.find("winerror.h") > 0:
+        #    print("FOUND It here: " + filename)
+        #    print(f"{deserialize_ix}: DESERIALIZE {filename}")
+    
         deserialize_ix += 1
 
 
@@ -210,3 +218,12 @@ def deserialize_all_files_from_stream(inData: io.BytesIO) ->  Dict[str, bytes]:
 
     deserialize_all_files_from_stream_no_meta(inData, ret)
     return ret
+
+
+"""
+We don't use os.path.join as on Windows it has strange behaviour (c:/a/b + /x --> c:/x)
+"""
+def path_join(p1:str, p2: str) -> str:
+    if p1.endswith('/') or p1.endswith('\\'):
+        return p1 + p2
+    return p1 + os.sep + p2

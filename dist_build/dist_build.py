@@ -1,20 +1,26 @@
+from aiohttp.client import ClientSession
 from .config import get_syncer_host
 import json
 import ssl
 import os
 import io
 import sys
-import logging
 import aiohttp
 import asyncio
-import time
-from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler
 from .file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, uniform_filename, write_binary_to_file
+import time, sys
 
 
+async def kill_compile_job(session:ClientSession, client_sslcontext: ssl.SSLContext, syncer_host:str):
+    uri = syncer_host + '/kill_compile_jobs'
 
-async def start_compile_job(session, sslcontext, cmdline, syncer_host):
+    data = aiohttp.FormData()
+    r = await session.post(uri, data = data, ssl=client_sslcontext)
+    body = await r.read()
+    print(f"kill-body = {body}")
+
+
+async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, cmdline:str, syncer_host:str):
     uri = syncer_host + '/push_compile_job'
     files = {}
 
@@ -45,12 +51,17 @@ async def start_compile_job(session, sslcontext, cmdline, syncer_host):
     result = json.loads(result)
 
     error_code = result["exit_code"]
-    stdout_str = result["stdout"]
-    stderr_str = result["stderr"]
+    stdout_str:str= result["stdout"]
+    stderr_str:str = result["stderr"]
     #print("RESULT = " + str(error_code) + ", STDOUT = " + stdout + ", STDERR = " + stderr)
 
-    sys.stderr.write(stderr_str)
-    sys.stdout.write(stdout_str)
+    sys.stderr.write(f"{stderr_str.encode()}\n")  
+
+    for k in stdout_str.split('\n'):
+        if not k.startswith("Note: including"):
+            sys.stdout.write(k)
+
+
 
     for filename in all_files:
         if filename != RESULT_DUMMY_FILENAME:
@@ -66,7 +77,12 @@ async def sendDataToSyncer(loop, cmdline, syncer_host):
     client_sslcontext.check_hostname = False
     client_sslcontext.verify_mode = ssl.CERT_NONE
     #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')    
-    await start_compile_job(session, client_sslcontext, cmdline, syncer_host)
+    
+    try:
+        await start_compile_job(session, client_sslcontext, cmdline, syncer_host)
+    except KeyboardInterrupt:
+        await kill_compile_job(session, client_sslcontext, syncer_host)
+
     await session.close()
 
 

@@ -14,7 +14,7 @@ class Serializer:
         self.count = 0
 
     def clear(self):
-        print(f"{self.count}: CLEARING")
+        #print(f"{self.count}: CLEARING")
         self.data = bytearray()
 
     def payload(self) -> bytearray:
@@ -22,7 +22,7 @@ class Serializer:
 
     def add(self, path: str, content: bytes):
         #if path.find('winerror') >= 0:
-        print(f"{self.count}: SERIALIZING THIS THING: " + path)
+        #   print(f"{self.count}: SERIALIZING THIS THING: " + path)
         serialize_file_to_stream(self.data, path, content)
         self.count += 1
 
