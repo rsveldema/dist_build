@@ -9,13 +9,15 @@
             "type": "python",
             "request": "launch",
             "console": "integratedTerminal",
-            "module": "dist_build.syncer"
+            "module": "dist_build.syncer",
+            "cwd": "${workspaceFolder}/src"
         },  {
             "name": "Python: daemon",
             "type": "python",
             "request": "launch",
             "program": "daemon.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src"
         }
     ]
 }

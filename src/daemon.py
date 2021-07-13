@@ -341,7 +341,7 @@ def main():
 
     loop = asyncio.get_event_loop()
 
-    for i in range(1): #num_available_cores()):
+    for i in range(num_available_cores()):
         loop.create_task(poll_job_queue(i))
 
     aiohttp.web.run_app(make_app(options), ssl_context=server_sslcontext)
