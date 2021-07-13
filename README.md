@@ -41,3 +41,17 @@ On the build machines you use:
 pip install -r requirements.txt 
 
 Next adapt the config.json to add your include dirs (in the config.json on the development machine) and prefered number of cores to use (on the build machines).
+
+### Virtual environments
+
+Because dist_build is written in python, it can be challenging to use in virtual environments.
+We therefore can optionally run the dist_build script wrapped in an executable to workaround this.
+
+To do so, execute the 'generate_dist_build_executable.sh' script.
+
+
+### Security
+
+We, by default, use SSL/TLS for communication between daemon <--> sync <---> dist_build programs.
+The certificates are in src/certs and can be regenerated using the gen_self_signed_certs.sh script there.
+
