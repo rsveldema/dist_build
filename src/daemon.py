@@ -1,7 +1,7 @@
 from asyncio.subprocess import Process
 import socket
-from dist_build.serializer import Serializer
-from dist_build.options import DistBuildOptions
+from serializer import Serializer
+from options import DistBuildOptions
 from os import mkdir, getenv, path, makedirs, chdir
 import ssl
 import typing
@@ -15,10 +15,9 @@ from aiohttp.formdata import FormData
 from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from .config import get_syncer_host, num_available_cores, storage_dir
+from config import get_syncer_host, num_available_cores, storage_dir
 import asyncio
-import os
-from .file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True

@@ -1,4 +1,4 @@
 
 
-(cd dist_build && python -m daemon)
+(cd src && python daemon.py)
 

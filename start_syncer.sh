@@ -1,5 +1,5 @@
 
 
-(cd dist_build && python -m syncer)
+(cd src && python syncer.py)
 
 
