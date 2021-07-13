@@ -9,7 +9,11 @@ source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 RESULT_DUMMY_FILENAME="RESULT"
 FILE_PREFIX_IN_FORM="FILE:"
 
-def uniform_filename(filename):
+
+"""
+remove windows drive letter if prefixed with it
+"""
+def uniform_filename(filename) -> str:
     if filename.lower().startswith("c:"):
         filename = filename[2:]
     return filename
