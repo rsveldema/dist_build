@@ -10,3 +10,4 @@ tqdm
 
 wheel
 pyinstaller
+aiohttp
