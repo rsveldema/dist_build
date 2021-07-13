@@ -1,4 +1,4 @@
-from config import get_include_dirs
+from config import get_include_dirs, get_copied_already_dirs
 import ssl
 import json
 import base64
@@ -19,8 +19,9 @@ class RemoteJob:
     to_send : Dict[str, bytes]
     cmdline: str
     machine_id: str
+    user_include_roots: List[str]
 
-    def __init__(self, cmdline:str, env: dict, files: Dict[str, str], user_include_roots: Dict[str, bool]):
+    def __init__(self, cmdline:str, env: dict, files: Dict[str, str], user_include_roots: List[str]):
         global job_counter
         self.files = files
         self.cmdline = cmdline
@@ -68,7 +69,8 @@ async def push_compile_job(request):
     env = data['env']
     files = data['files']
 
-    user_include_roots = get_include_dirs()
+    user_include_roots = get_include_dirs().copy()
+    user_include_roots.append(get_copied_already_dirs())
 
     job = RemoteJob(cmdline, env, files, user_include_roots)
     job_queue.append(job)
