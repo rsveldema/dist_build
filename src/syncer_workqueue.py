@@ -1,3 +1,4 @@
+from config import get_include_dirs
 import ssl
 import json
 import base64
@@ -19,7 +20,7 @@ class RemoteJob:
     cmdline: str
     machine_id: str
 
-    def __init__(self, cmdline:str, env: dict, files: Dict[str, str]):
+    def __init__(self, cmdline:str, env: dict, files: Dict[str, str], user_include_roots: Dict[str, bool]):
         global job_counter
         self.files = files
         self.cmdline = cmdline
@@ -28,13 +29,14 @@ class RemoteJob:
         self.id = str(job_counter)
         job_counter += 1
         self.machine_id = None
+        self.user_include_roots = user_include_roots
 
     def kill(self):
         print(f"killing job at {self.machine_id}")
         pass
 
     def get_dict(self):
-        return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files}
+        return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files, "user_include_roots": self.user_include_roots}
 
     def set_machine_id(self, machine_id):
         self.machine_id = machine_id
@@ -66,7 +68,9 @@ async def push_compile_job(request):
     env = data['env']
     files = data['files']
 
-    job = RemoteJob(cmdline, env, files)
+    user_include_roots = get_include_dirs()
+
+    job = RemoteJob(cmdline, env, files, user_include_roots)
     job_queue.append(job)
     jobs_in_progress[job.id] = job
 

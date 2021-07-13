@@ -30,6 +30,7 @@ def get_build_hosts() -> List[str]:
 
 def get_include_dirs() -> List[str]:
     return config['dirs']
+    
 
 def num_available_cores():
     if "num_cores" in config:

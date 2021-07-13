@@ -12,10 +12,10 @@ import aiohttp
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.formdata import FormData
-from aiohttp_session import setup, get_session, session_middleware
+from aiohttp_session import setup
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from config import get_syncer_host, num_available_cores, storage_dir
+from config import get_syncer_host, storage_dir
 import asyncio
 from file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
@@ -75,9 +75,10 @@ class LocalBuildJob:
     env: typing.Dict[str, str]
     files: typing.Dict[str, str]
     options: DistBuildOptions
+    user_include_roots: List[str]
 
 
-    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str], options: DistBuildOptions):
+    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str], options: DistBuildOptions, user_include_roots: List[str]):
         self.cmdlist = json.loads(cmdline)
         self.env = env
         self.id = id
@@ -85,7 +86,15 @@ class LocalBuildJob:
         self.client_sslcontext = client_sslcontext
         self.session = session
         self.options = options
+        self.user_include_roots = user_include_roots
         
+    def is_user_directory(self, filename:str):
+        filename = uniform_filename(filename)
+        for k in self.user_include_roots:
+            if filename.startswith(k):
+                return True
+        return False
+
     async def run(self):
         self.save_files()
         self.change_include_dirs()
@@ -127,20 +136,23 @@ class LocalBuildJob:
 
     def change_include_dirs(self):
         new_cmdline:List[str] = []
-        found_include_directive = False
+        found_include_directive_for_next_option = False
         for orig in self.cmdlist:
             
-            if found_include_directive:
-                found_include_directive = False
-                orig = uniform_filename(orig)
-                orig = storage_dir() + orig
+            if found_include_directive_for_next_option:
+                found_include_directive_for_next_option = False
+                if self.is_user_directory(orig):
+                    orig = uniform_filename(orig)
+                    orig = storage_dir() + orig
 
             if orig == '/I' or orig == '-I':
-               found_include_directive = True
+               found_include_directive_for_next_option = True
             elif orig.startswith('-I'):
                 orig = orig[2:]
-                orig = uniform_filename(orig)
-                orig = '-I' + storage_dir() + orig
+
+                if self.is_user_directory(orig):
+                    orig = uniform_filename(orig)
+                    orig = '-I' + storage_dir() + orig
 
             new_cmdline.append(orig)   
         self.cmdlist = new_cmdline
@@ -303,8 +315,9 @@ async def try_fetch_compile_job(session: ClientSession, client_sslcontext, synce
             cmdline = payload['cmdline']
             id = payload['id']
             files = payload['files']
+            user_include_roots = payload['user_include_roots']
             #print("remote compile activated: " + cmdline)
-            return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files, options)
+            return LocalBuildJob(cmdline, env, id, client_sslcontext, session, files, options, user_include_roots)
     except ValueError as e:
         print("failed to decode json: " + e)
     return None
