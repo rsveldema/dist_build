@@ -1,10 +1,7 @@
 
-set DBUILD_ROOT=%HOME%/source/repos/include_syncer/dist_build
+set DBUILD_ROOT=%HOME%/source/repos/dist_build/src/dist/dist_build
 
+set PATH=%PATH%;%DBUILD_ROOT%
 
-set PYTHONPATH=%DBUILD_ROOT%:$PYTHONPATH
+%DBUILD_ROOT%/dist_build.exe  %*
 
-
-set PATH=%PATH%;c:\Python38
-
-python -m dist_build.dist_build  %*

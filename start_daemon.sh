@@ -1,4 +1,4 @@
 
 
-python -m dist_build.daemon
+(cd dist_build && python -m daemon)
 

@@ -1,6 +1,6 @@
 from os import getenv, makedirs
 from typing import List
-from .file_utils import read_content
+from file_utils import read_content
 import json
 import multiprocessing
 

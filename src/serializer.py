@@ -1,8 +1,5 @@
-
-
-
 import io
-from dist_build.file_utils import deserialize_all_files_from_stream_no_meta, serialize_file_to_stream
+from file_utils import deserialize_all_files_from_stream_no_meta, serialize_file_to_stream
 from typing import Dict
 import os
 

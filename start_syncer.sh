@@ -1,4 +1,5 @@
 
 
-python -m dist_build.syncer
+(cd dist_build && python -m syncer)
+
 

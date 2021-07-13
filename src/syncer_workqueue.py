@@ -8,7 +8,7 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from typing import Dict, List
-from .file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream
+from file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream
 from urllib.parse import unquote
 
 job_counter = 0

@@ -1,5 +1,5 @@
 from aiohttp.client import ClientSession
-from .config import get_syncer_host
+from config import get_syncer_host
 import json
 import ssl
 import os
@@ -7,8 +7,8 @@ import io
 import sys
 import aiohttp
 import asyncio
-from .file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, uniform_filename, write_binary_to_file
-import time, sys
+from file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, uniform_filename, write_binary_to_file
+import sys
 
 
 async def kill_compile_job(session:ClientSession, client_sslcontext: ssl.SSLContext, syncer_host:str):

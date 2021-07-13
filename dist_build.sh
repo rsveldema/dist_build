@@ -1,7 +1,7 @@
 
-export DBUILD_ROOT=$HOME/source/repos/include_syncer/dist_build
+export DBUILD_ROOT=$HOME/source/repos/dist_build/src
 
 
 export PYTHONPATH=$DBUILD_ROOT:$PYTHONPATH
 
-python -m dist_build.dist_build $@
+python -m src.dist_build $@

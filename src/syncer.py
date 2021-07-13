@@ -1,7 +1,7 @@
 from aiohttp.client import ClientSession
-from dist_build.serializer import Serializer
-from dist_build.options import DistBuildOptions
-from .config import get_build_hosts, get_include_dirs
+from serializer import Serializer
+from options import DistBuildOptions
+from config import get_build_hosts, get_include_dirs
 import ssl
 import os
 import sys
@@ -11,8 +11,8 @@ import asyncio
 from typing import List, Dict, Tuple
 from watchdog.observers import Observer
 from aiohttp_session import setup, get_session, session_middleware
-from .file_utils import is_header_file, path_join, read_binary_content
-from .syncer_workqueue import wait_for_incoming_requests
+from file_utils import is_header_file, path_join, read_binary_content
+from syncer_workqueue import wait_for_incoming_requests
 from tqdm import tqdm
 
 
