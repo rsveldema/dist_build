@@ -16,6 +16,9 @@ remove windows drive letter if prefixed with it
 def uniform_filename(filename) -> str:
     if filename.lower().startswith("c:"):
         filename = filename[2:]
+    filename = filename.replace('/', '#')
+    filename = filename.replace('\\', '#')
+    filename = filename.replace('#', os.path.sep)
     return filename
 
 def filename_ends_with(filename, suffix_list):

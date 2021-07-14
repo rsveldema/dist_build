@@ -15,14 +15,17 @@ from aiohttp.formdata import FormData
 from aiohttp_session import setup
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from config import get_syncer_host, storage_dir
+from config import get_syncer_host, storage_dir, num_available_cores
 import asyncio
+import pathlib
+import time
 from file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
 options: DistBuildOptions
+
 
 
 async def install_file(request: aiohttp.RequestInfo):    
@@ -56,16 +59,41 @@ async def install_file(request: aiohttp.RequestInfo):
     return aiohttp.web.Response(text="ok")
 
 
+performance_data=[]
+num_current_jobs = 0
+
+def add_performance_data():
+    now = time.time()
+    perf = {'x': now, 'y' : num_current_jobs}
+    performance_data.append(perf)
+
+
+def notify_new_job_started():
+    global num_current_jobs
+    num_current_jobs += 1
+    add_performance_data()
+
+def notify_job_done():
+    global num_current_jobs
+    num_current_jobs -= 1
+    add_performance_data()
+
+
+
+async def show_status(request):
+    return aiohttp.web.JsonResponse(json=performance_data)
 
 
 async def make_app(options: DistBuildOptions):
     # this server will only accept header files. We'll assume a 15 MByte upper limit on those.
     app = aiohttp.web.Application(client_max_size = 1024 * 1024 * 16)
+    
     # secret_key must be 32 url-safe base64-encoded bytes
     fernet_key = fernet.Fernet.generate_key()
     secret_key = base64.urlsafe_b64decode(fernet_key)
     setup(app, EncryptedCookieStorage(secret_key))
     app.add_routes([aiohttp.web.post('/install_file', install_file)])
+    app.add_routes([aiohttp.web.get('/status', show_status)])
     return app
 
 
@@ -88,20 +116,24 @@ class LocalBuildJob:
         self.options = options
         self.user_include_roots = user_include_roots
         
-    def is_user_directory(self, filename:str):
+    def is_user_directory(self, filename:str):        
         filename = uniform_filename(filename)
         for k in self.user_include_roots:
+            k = uniform_filename(k)
+            print(f"TEST: {filename} startswith {k}")
             if filename.startswith(k):
                 return True
         return False
 
     async def run(self):
+        notify_new_job_started()
         self.save_files()
         self.change_include_dirs()
         self.change_debug_dirs()
         self.change_output_dirs()
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
+        notify_job_done()
 
     def change_debug_dirs(self):
         # when seeing: /FdCMakeFiles\cmTC_ea5a2.dir
@@ -138,23 +170,27 @@ class LocalBuildJob:
         new_cmdline:List[str] = []
         found_include_directive_for_next_option = False
         for orig in self.cmdlist:
-            
+            new_cmd = orig
             if found_include_directive_for_next_option:
                 found_include_directive_for_next_option = False
+                print(f"TEST ME HERE {orig}")
                 if self.is_user_directory(orig):
-                    orig = uniform_filename(orig)
-                    orig = storage_dir() + orig
-
+                    orig = uniform_filename(orig) 
+                    new_cmd = storage_dir() + orig
             if orig == '/I' or orig == '-I':
                found_include_directive_for_next_option = True
             elif orig.startswith('-I'):
+                no_replacement = orig
                 orig = orig[2:]
 
+                print(f"TEST ME HERE2 {orig}")
                 if self.is_user_directory(orig):
                     orig = uniform_filename(orig)
-                    orig = '-I' + storage_dir() + orig
+                    new_cmd = '-I' + storage_dir() + orig    
+                else:
+                    new_cmd = no_replacement      
 
-            new_cmdline.append(orig)   
+            new_cmdline.append(new_cmd)   
         self.cmdlist = new_cmdline
 
 
@@ -343,7 +379,7 @@ async def poll_job_queue(jobid: int):
 
 def main():
     global server_sslcontext, options
-    
+        
     options = DistBuildOptions()
 
     server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
@@ -354,7 +390,7 @@ def main():
 
     loop = asyncio.get_event_loop()
 
-    for i in range(num_available_cores()):
+    for i in range(1): #num_available_cores()):
         loop.create_task(poll_job_queue(i))
 
     aiohttp.web.run_app(make_app(options), ssl_context=server_sslcontext)
