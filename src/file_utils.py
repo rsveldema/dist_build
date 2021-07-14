@@ -3,7 +3,7 @@ from typing import Dict
 from aiohttp import web
 import io
 
-header_suffix_list = ['.h', '.hh', '.hxx', '.hpp', '.ver']
+header_suffix_list = ['.h', '.hh', '.hxx', '.hpp', '.ver', '.ipp']
 source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 
 RESULT_DUMMY_FILENAME="RESULT"

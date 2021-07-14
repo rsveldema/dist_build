@@ -53,8 +53,13 @@ class RemoteJob:
             #print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
             await asyncio.sleep(1)
 
+
+
+
 job_queue: List[RemoteJob] = []
 jobs_in_progress: Dict[str, RemoteJob] = {}
+
+
 
 async def kill_compile_jobs(request):
     for j in jobs_in_progress:
@@ -70,7 +75,7 @@ async def push_compile_job(request):
     files = data['files']
 
     user_include_roots = get_include_dirs().copy()
-    user_include_roots.append(get_copied_already_dirs())
+    user_include_roots.extend(get_copied_already_dirs())
 
     job = RemoteJob(cmdline, env, files, user_include_roots)
     job_queue.append(job)
@@ -104,7 +109,7 @@ async def notify_compile_job_done(request):
     to_send: Dict[str, bytes] = {}
     for p in payload:
         decoded_filename = unquote(p)
-        #print(f"EXAMINGING {decoded_filename}")
+        print(f"EXAMINGING {decoded_filename}")
         if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
             #print("FOUND OBJECT FILE: " + decoded_filename)
             out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
