@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>dist-build status page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.0/css/materialize.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.4.1/dist/chart.min.js"></script>
+  
+</head>
+
+<body>
+    <div id="wrap">
+        <header>
+           <h1><a href="">Dist_build</a></h1>
+           <p>dist_build status</p>
+        </header>
+        <canvas id="myChart" width="10" height="10"></canvas>
+        <script>
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                //labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: '# of access processes',
+                    data: {{PLOT_DATA | tojson(indent=2) }}, //[{x: 10, y: 20}, {x: 15, y: 33}, {x: 20, y: 10}],       
+                    borderWidth: 1,
+                    showLine: true
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        </script>
+         
+    </div>
+    <footer><a href="https://github.com/rsveldema/dist_build">https://github.com/rsveldema/dist_build</a></footer>
+</body>
+</html>
