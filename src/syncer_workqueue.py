@@ -1,8 +1,8 @@
-from config import get_include_dirs, get_copied_already_dirs
+from config import get_include_dirs, get_copied_already_dirs, get_build_hosts
 import ssl
 import json
 import base64
-from aiohttp import web
+from aiohttp import web, ClientSession
 import asyncio
 from aiohttp.web_response import json_response
 from aiohttp_session import setup, get_session, session_middleware
@@ -136,6 +136,28 @@ async def pop_compile_job(request):
         await asyncio.sleep(1)
     return web.Response(text="ok")
 
+
+
+async def handle_status_request(request):
+    response = {}
+    async with ClientSession() as session:
+        client_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+        #sslcontext.load_verify_locations('certs/server.pem')
+        client_sslcontext.check_hostname = False
+        client_sslcontext.verify_mode = ssl.CERT_NONE
+        #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')  
+        #   
+        for p in get_build_hosts():
+            uri = "https://" + p + "/status"
+            r = await session.get(uri, ssl=client_sslcontext)
+            body = await r.read()
+            print(f"received: {body}")
+
+            response[p] = json.loads(body.decode())
+
+    return web.json_response(response)
+
+
 async def make_app():
     app = web.Application()
     # secret_key must be 32 url-safe base64-encoded bytes
@@ -147,6 +169,7 @@ async def make_app():
         web.post('/kill_compile_jobs', kill_compile_jobs),
         web.post('/pop_compile_job', pop_compile_job),
         web.post('/notify_compile_job_done', notify_compile_job_done),
+        web.get('/status', handle_status_request),
     ])
     return app
 

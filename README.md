@@ -111,3 +111,17 @@ The process:
 
 
 
+## Monitoring
+
+You can query the status of a single worker using:
+
+```bash
+     curl -k https://<IP>:8443/status
+```
+
+You can query the aggregate status over all workers by querying the JobManager:
+
+```bash
+     curl -k https://<IP of syncer>:5000/status
+```
+where in a simple setup the IP of the syncer is localhost.
