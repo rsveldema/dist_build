@@ -8,7 +8,7 @@ Then each of the four machines receives a portion of the compile jobs and we get
 
 To make the work distribution fair over the machines, we perform work-stealing.
 The jobQueue machine maintains a queue of compiles yet-to-do.
-Each worker, once idle, asks the JobQueue manage for work.
+Each worker, once idle, asks the JobQueue manage for work (the workers otherwise poll the syncer for new work)
 It then fetches the command line to execute (here 'gcc -c fileX.c').
 
 
@@ -73,6 +73,7 @@ On the build machines in your public/private cloud you use:
 
 ```bash
 pip install -r requirements.txt 
+sh generate_dist_build_executable.sh
 ```
 
 Next adapt the config.json to add your include dirs (in the config.json on the development machine) and prefered number of cores to use (on the build machines).

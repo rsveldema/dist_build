@@ -22,6 +22,12 @@ async def kill_compile_job(session:ClientSession, client_sslcontext: ssl.SSLCont
     body = await r.read()
     print(f"kill-body = {body}")
 
+def unpack_string(str:bytes):
+    decoded = str.decode()
+    #print("decoded === " + decoded)
+    if decoded.startswith('b\''):
+        decoded = decoded[2:-1]
+    return decoded
 
 async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, cmdline:str, syncer_host:str):
     uri = syncer_host + '/push_compile_job'
@@ -58,13 +64,11 @@ async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, c
     stderr_str:str = result["stderr"]
     #print("RESULT = " + str(error_code) + ", STDOUT = " + stdout + ", STDERR = " + stderr)
 
-    sys.stderr.write(f"{stderr_str.encode()}\n")  
+    sys.stderr.write(f"{unpack_string(stderr_str.encode())}")  
 
     for k in stdout_str.split('\n'):
         if not k.startswith("Note: including"):
             sys.stdout.write(k)
-
-
 
     for filename in all_files:
         if filename != RESULT_DUMMY_FILENAME:
@@ -101,6 +105,8 @@ def is_link_job(cmdlist: List[str]):
     return True
 
 
+
+
 def run_cmd_locally(cmdline): 
 
     ret:subprocess.CompletedProcess = subprocess.run(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -112,8 +118,8 @@ def run_cmd_locally(cmdline):
     stdout = ret.stdout
     stderr = ret.stderr
 
-    sys.stderr.write(stderr.decode())
-    sys.stdout.write(stdout.decode())
+    sys.stderr.write(unpack_string(stderr))
+    sys.stdout.write(unpack_string(stdout))
 
     sys.exit(exit_code)
 

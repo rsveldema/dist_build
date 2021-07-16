@@ -1,4 +1,6 @@
+import logging
 import os
+import ssl
 from typing import Dict
 from aiohttp import web
 import io
@@ -9,6 +11,13 @@ source_suffix_list = ['.c', '.cc', '.cxx', '.cpp']
 RESULT_DUMMY_FILENAME="RESULT"
 FILE_PREFIX_IN_FORM="FILE:"
 
+def create_client_ssl_context() -> ssl.SSLContext:
+    sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    #sslcontext.load_verify_locations('certs/server.pem')
+    sslcontext.check_hostname = False
+    sslcontext.verify_mode = ssl.CERT_NONE
+    #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
+    return sslcontext
 
 """
 remove windows drive letter if prefixed with it
@@ -140,7 +149,7 @@ def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_p
     if prefix != None and prefix != "":
         prefix += os.path.pathsep
 
-    print("CREATINGGGGG: " + prefix + filename[:dot_pos] + ext)
+    logging.debug("CREATINGGGGG: " + prefix + filename[:dot_pos] + ext)
     return prefix + filename[:dot_pos] + ext
 
 
@@ -180,7 +189,7 @@ def read_bytes_from_stream(inData: io.BytesIO):
         # normal: EOF reached
         return None
     if len(str_len_buffer) != 4:
-        print("ERROR: failed to read str-len")
+        logging.error("ERROR: failed to read str-len")
         return None
     str_len = int.from_bytes(str_len_buffer, 'little')
     str = inData.read(str_len)

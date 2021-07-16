@@ -34,4 +34,4 @@ class Profiler:
         else:
             self.spent[frame.name] = frame.took()
 
-        self.dump_stats()
+        #self.dump_stats()

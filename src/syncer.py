@@ -11,7 +11,7 @@ import asyncio
 from typing import List, Dict, Tuple
 from watchdog.observers import Observer
 from aiohttp_session import setup, get_session, session_middleware
-from file_utils import is_header_file, path_join, read_binary_content
+from file_utils import is_header_file, path_join, read_binary_content, create_client_ssl_context
 from syncer_workqueue import wait_for_incoming_requests
 from tqdm import tqdm
 
@@ -33,7 +33,7 @@ async def do_broadcast_of_serialized_data(session: aiohttp.ClientSession, serial
             post_result = await post_response.read()
             post_result = post_result.decode('utf-8')
             if post_result != "ok":
-                print(f"post result = {post_result} when trying to send a header file chunk to daemon {host}")
+                logging.error(f"post result = {post_result} when trying to send a header file chunk to daemon {host}")
                 sys.exit(1)
 
         # print("result = " + str(r))
@@ -44,11 +44,11 @@ async def do_broadcast_of_serialized_data(session: aiohttp.ClientSession, serial
 async def broadcast_files(session: aiohttp.ClientSession, hosts: List[str], dir:str, files:List[str], sslcontext: ssl.SSLContext,
                          scheduled_broadcast_tasks: Dict[str, bool], options: DistBuildOptions, serializer: Serializer):   
     if len(hosts) == 0:
-        print("NO HOSTS CONFIGURED, CAN'T BROADCAST INCLUDE FILES")
+        logging.error("NO HOSTS CONFIGURED, CAN'T BROADCAST INCLUDE FILES")
         return
 
     if options.verbose():
-        print(f"BROADCAST[{dir}] <--- {files}")
+        logging.debug(f"BROADCAST[{dir}] <--- {files}")
 
 
     for filename in tqdm(files):
@@ -82,12 +82,12 @@ def is_ignorable_dir(item):
 async def install_directory(session: aiohttp.ClientSession, hosts: List[str], dir: str, sslcontext: ssl.SSLContext, scheduled_broadcast_tasks: Dict[str, bool], options: DistBuildOptions, serializer: Serializer):
     content = os.listdir(dir)
     
-    print("examing dir " + dir)
+    logging.info("examing dir " + dir)
     #print("content = " + str(content))
     files: List[str] = []
     for item in content:
         if item.startswith("."):
-            print("IGNORE: " + item)
+            logging.info("IGNORE: " + item)
             continue
   
         fullpath = path_join(dir, item)
@@ -103,12 +103,12 @@ async def install_directory(session: aiohttp.ClientSession, hosts: List[str], di
                 pass
         elif os.path.isdir(fullpath):
             if is_ignorable_dir(item):
-                print(f"ignorable dir: {item}")
+                logging.info(f"ignorable dir: {item}")
             else:
                 #print(f"recursing into {item}")
                 await install_directory(session, hosts, fullpath, sslcontext, scheduled_broadcast_tasks, options, serializer)
         else:
-            print(f"WTF? not a FILE or DIR {fullpath}")
+            logging.error(f"WTF? not a FILE or DIR {fullpath}")
             
 
     await broadcast_files(session, hosts, dir, files, sslcontext, scheduled_broadcast_tasks, options, serializer)
@@ -131,14 +131,14 @@ class FileSystemObserver:
     def dispatch(self, evt):
         src_path = evt.src_path
         if os.path.isdir(src_path):
-            print("IGNORING DIR EVENT: " + src_path)
+            logging.info("IGNORING DIR EVENT: " + src_path)
             return
 
         if not is_header_file(src_path):
-            print("IGNORING NON HEADER: " + src_path)
+            logging.info("IGNORING NON HEADER: " + src_path)
             return
 
-        print("got file system evt: " + src_path)
+        logging.debug("got file system evt: " + src_path)
 
         serializer = Serializer()
 
@@ -157,17 +157,10 @@ class FileSystemObserver:
             #    print(f"broadcast of change already scheduled: {src_path}, evt = {evt.event_type}")
             pass
 
-async def create_ssl_context() -> ssl.SSLContext:
-    sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-    #sslcontext.load_verify_locations('certs/server.pem')
-    sslcontext.check_hostname = False
-    sslcontext.verify_mode = ssl.CERT_NONE
-    #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
-    return sslcontext
 
 async def sendData(loop, hosts, scheduled_broadcast_tasks, options: DistBuildOptions, session:ClientSession):
     serializer = Serializer()
-    sslcontext = await create_ssl_context()
+    sslcontext = create_client_ssl_context()
     for cdir in get_include_dirs():
         await install_directory(session, hosts, cdir, sslcontext, scheduled_broadcast_tasks, options, serializer)
 
@@ -189,7 +182,7 @@ async def async_main(loop):
 
     await sendData(loop, hosts, scheduled_broadcast_tasks, options, session)
 
-    print("waiting for dir-changes")
+    logging.debug("waiting for dir-changes")
 
 
 

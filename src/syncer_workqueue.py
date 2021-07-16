@@ -1,3 +1,4 @@
+import logging
 from config import get_include_dirs, get_copied_already_dirs, get_build_hosts
 import ssl
 import json
@@ -9,7 +10,7 @@ from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
 from typing import Dict, List
-from file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream
+from file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream, create_client_ssl_context
 from urllib.parse import unquote
 
 job_counter = 0
@@ -19,6 +20,7 @@ class RemoteJob:
     to_send : Dict[str, bytes]
     cmdline: str
     machine_id: str
+    is_killed: bool
     user_include_roots: List[str]
 
     def __init__(self, cmdline:str, env: dict, files: Dict[str, str], user_include_roots: List[str]):
@@ -31,10 +33,12 @@ class RemoteJob:
         job_counter += 1
         self.machine_id = None
         self.user_include_roots = user_include_roots
+        self.is_killed = False
 
     def kill(self):
-        print(f"killing job at {self.machine_id}")
-        pass
+        logging.debug(f"killing job at {self.machine_id}")       
+        self.is_done = True
+        self.is_killed = True
 
     def get_dict(self):
         return {"cmdline": self.cmdline, "env" : self.env, "id" : self.id, "files": self.files, "user_include_roots": self.user_include_roots}
@@ -81,7 +85,7 @@ async def push_compile_job(request):
     job_queue.append(job)
     jobs_in_progress[job.id] = job
 
-    print("going to compile: " + cmdline)
+    logging.debug("going to compile: " + cmdline)
     await job.done() 
     #print("compile done: " + cmdline)
     #return web.Response(text=job.result)
@@ -109,14 +113,14 @@ async def notify_compile_job_done(request):
     to_send: Dict[str, bytes] = {}
     for p in payload:
         decoded_filename = unquote(p)
-        print(f"EXAMINGING {decoded_filename}")
+        logging.debug(f"EXAMINGING {decoded_filename}")
         if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
             #print("FOUND OBJECT FILE: " + decoded_filename)
             out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
             data:web.FileField = payload[p]
             to_send[out_file] = data.file.read()
 
-    print("id = ==========> " + id)
+    logging.debug("id = ==========> " + id)
     job = jobs_in_progress[id]
     await job.notify_done(result, to_send)
     return web.Response(text="ok")
@@ -129,7 +133,7 @@ async def pop_compile_job(request):
     for _retries in range(0, 10):
         if len(job_queue) > 0:
             new_job = job_queue.pop()
-            print(f"MACHINE ID = {machine_id}")
+            logging.debug(f"MACHINE ID = {machine_id}")
             new_job.set_machine_id(machine_id)
             js = json.dumps(new_job.get_dict())
             return web.Response(text=js)
@@ -141,17 +145,13 @@ async def pop_compile_job(request):
 async def handle_status_request(request):
     response = {}
     async with ClientSession() as session:
-        client_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-        #sslcontext.load_verify_locations('certs/server.pem')
-        client_sslcontext.check_hostname = False
-        client_sslcontext.verify_mode = ssl.CERT_NONE
-        #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')  
-        #   
+        client_sslcontext = create_client_ssl_context()
+
         for p in get_build_hosts():
             uri = "https://" + p + "/status"
             r = await session.get(uri, ssl=client_sslcontext)
             body = await r.read()
-            print(f"received: {body}")
+            logging.debug(f"received: {body}")
 
             response[p] = json.loads(body.decode())
 
