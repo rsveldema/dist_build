@@ -21,6 +21,12 @@ This has the following reprocutions:
 
 To keep the headers up-to-date, the JobQueue manager keeps track of all changes using file-change notifications on windows and linux and uploads new versions on the fly.
 
+**Note that dist_build attempts to create a sandbox for includes in $HOME/dist_build.**
+All downloaded includes are copied there by the workers, complete with the path the include file came from.
+When compiling, the compiler's invocation is examined to change the include paths to point to the downloaded location in the sandbox.
+
+
+
 ## Security
 
 All connections between processes worker <--> jobqueue <--> dist_build is via HTTPS.
@@ -84,7 +90,10 @@ Hence, copy your config.json there and adapt as needed:
     "dirs": [
         "/Users/rsvel/source/repos/include_syncer/tests"
     ],
-    "num_cores": 4
+    "num_cores": 4,
+    "copied_already": [
+        "/home/user/my_large_include_dir"
+    ]
 }
 ```
 
@@ -92,6 +101,13 @@ Hence, copy your config.json there and adapt as needed:
 - The 'syncer' variable is read by the dist_build script to find the JobQueue to push new jobs to.
 - The 'syncer' variable is read by the workers to try to fetch jobs from.
 - The 'num_cores' variable is read by the workers to find out how many cores to use locally for compilations (aka the number of concurrent jobs to run on a single worker).
+
+Because copying large amount of header files each time the system starts is expensive, we have the "copied_already" array.
+The process:
+1) Copy the includes once to the workers
+     - place the include path in "dirs" and start the syncer to let the system copy over the includes.
+2) Add the include path to the 'copied_already' variable.
+     - now the system will monitor for changes to these directories but will not copy them over
 
 
 
