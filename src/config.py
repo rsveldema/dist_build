@@ -33,8 +33,10 @@ def get_include_dirs() -> List[str]:
     
 
 def get_copied_already_dirs() -> List[str]:
-    return config['copied_already']
-    
+    if "copied_already" in config:
+        return config['copied_already']
+    return []
+
 
 def num_available_cores():
     if "num_cores" in config:

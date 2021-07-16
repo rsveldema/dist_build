@@ -4,6 +4,11 @@
 cmake_minimum_required (VERSION 3.10)
 project (HELLO CXX)
 
+message("CURRENT PROJ SOURCE DIR ${CMAKE_SOURCE_DIR}")
+
+set(CMAKE_C_COMPILER_LAUNCHER ${PROJECT_SOURCE_DIR}/../../ms_dist_build.cmd CACHE STRING "")
+set(CMAKE_CXX_COMPILER_LAUNCHER ${PROJECT_SOURCE_DIR}/../../ms_dist_build.cmd CACHE STRING "")
+
 # Recurse into the "Hello" and "Demo" subdirectories. This does not actually
 # cause another cmake executable to run. The same process will walk through
 # the project's entire directory structure.

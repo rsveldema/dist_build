@@ -1,0 +1,10 @@
+{
+    "hosts": [
+        "127.0.0.1:8443"
+    ],
+    "syncer": "https://localhost:5000",
+    "dirs": [
+        "/Users/rsvel/source/repos/dist_build/tests/cmake/Hello"
+    ],
+    "num_cores": 4
+}
