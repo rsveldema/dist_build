@@ -1,23 +1,50 @@
 # Distributed builds
 
-## Features
+Faster compiles by using multiple machines in parallel to build your project.
+For example, assume we have N files to compile and we have four machines.
+Then each of the four machines receives a portion of the compile jobs and we get a 4x speedup:
 
-- Syncs whole include dirs between machines
-- Detects changes to dirs and broadcast new header files or changes to header files
-- python
-    -> pyinstaller
-- https instead of tcp (more security!)
-- job-queue on coordinator
+<img src="docs/comm.svg" width="700">
+
+To make the work distribution fair over the machines, we perform work-stealing.
+The jobQueue machine maintains a queue of compiles yet-to-do.
+Each worker, once idle, asks the JobQueue manage for work.
+It then fetches the command line to execute (here 'gcc -c fileX.c').
+
+
+## Managing include files
+
+Instead of pre-processing at the development machine (like [distcc](https://github.com/distcc/distcc)) we send the all include files to all cloud machines.
+This has the following reprocutions:
+- header files are only read once,
+- changes to header files must be propagated to the workers to keep them up-to-date.
+
+To keep the headers up-to-date, the JobQueue manager keeps track of all changes using file-change notifications on windows and linux and uploads new versions on the fly.
+
+## Security
+
+All connections between processes worker <--> jobqueue <--> dist_build is via HTTPS.
+A certificate for authentication between the processes should be re-generated for each installation.
+The certificates are in src/certs and can be regenerated using the gen_self_signed_certs.sh script there.
+
+
+## Handling python virtual environments
+
+Because dist_build is written in python, it can be challenging to use in virtual environments.
+We therefore can optionally run the dist_build script wrapped in an executable to workaround this.
+
+To do so, execute the 'generate_dist_build_executable.sh' script.
+
 
 ## Usage
 
-Run this in a terminal on the machine you're doing development on:
+To start the JobQueue manager, run this in a terminal on the machine you're doing development on:
 
 ```bash
     python syncer.py
 ```
 
-On your development machine, instead of calling cl.exe directly, prefix it with dist_build like so:
+On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build like so:
 
 ```bash
     
@@ -29,7 +56,7 @@ python dist_build.py /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Com
       tests/hello.c
 ```
 
-On the build machines you use:
+On the build machines in your public/private cloud you use:
 
 ```bash
     python daemon.py 
@@ -38,20 +65,33 @@ On the build machines you use:
 
 ## Installation:
 
+```bash
 pip install -r requirements.txt 
+```
 
 Next adapt the config.json to add your include dirs (in the config.json on the development machine) and prefered number of cores to use (on the build machines).
 
-### Virtual environments
 
-Because dist_build is written in python, it can be challenging to use in virtual environments.
-We therefore can optionally run the dist_build script wrapped in an executable to workaround this.
+When running, the system will try to read ~/dist_build/config.json on both developer and cloud machines.
+Hence, copy your config.json there and adapt as needed:
 
-To do so, execute the 'generate_dist_build_executable.sh' script.
+```json
+{
+    "hosts": [              
+        "localhost:8443"
+    ],
+    "syncer": "https://localhost:5000",
+    "dirs": [
+        "/Users/rsvel/source/repos/include_syncer/tests"
+    ],
+    "num_cores": 4
+}
+```
+
+- The 'hosts' variable is read by the job-queue machine to find the workers.
+- The 'syncer' variable is read by the dist_build script to find the JobQueue to push new jobs to.
+- The 'syncer' variable is read by the workers to try to fetch jobs from.
+- The 'num_cores' variable is read by the workers to find out how many cores to use locally for compilations (aka the number of concurrent jobs to run on a single worker).
 
 
-### Security
-
-We, by default, use SSL/TLS for communication between daemon <--> sync <---> dist_build programs.
-The certificates are in src/certs and can be regenerated using the gen_self_signed_certs.sh script there.
 

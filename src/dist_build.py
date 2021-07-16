@@ -1,3 +1,6 @@
+from asyncio.subprocess import Process
+import subprocess
+from typing import List
 from aiohttp.client import ClientSession
 from config import get_syncer_host
 import json
@@ -86,8 +89,43 @@ async def sendDataToSyncer(loop, cmdline, syncer_host):
     await session.close()
 
 
+
+# only distribute pure compile jobs:
+def is_link_job(cmdlist: List[str]):
+    for opt in cmdlist:
+        opt = opt.lower()
+        if opt == "-c" or opt ==  "/c":
+            return False
+        if opt == "/link":
+            return True
+    return True
+
+
+def run_cmd_locally(cmdline): 
+
+    ret:subprocess.CompletedProcess = subprocess.run(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    exit_code = ret.returncode
+
+    #print(f"got stdout {stdout}, ret {exit_code}")
+
+    stdout = ret.stdout
+    stderr = ret.stderr
+
+    sys.stderr.write(stderr.decode())
+    sys.stdout.write(stdout.decode())
+
+    sys.exit(exit_code)
+
+
 def main():
-    cmdline = sys.argv[1:]
+    cmdline:List[str] = sys.argv[1:]
+
+    if is_link_job(cmdline):
+        run_cmd_locally(cmdline)
+        return
+
+
     #print("GREETINGS!!!!!!!!!!!")
     #print(cmdline)
 

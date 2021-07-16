@@ -19,7 +19,7 @@ from config import get_syncer_host, storage_dir, num_available_cores
 import asyncio
 import pathlib
 import time
-from file_utils import is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from file_utils import get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -154,13 +154,23 @@ class LocalBuildJob:
         # when seeing: /FdCMakeFiles\cmTC_ea5a2.dir
         # we need to create this dir in the build dir         
         new_cmdline:List[str] = []
-        opt_prefix = '/Fo'
+        opt_prefix_VC = '/Fo'
+        opt_prefix_GCC = '-o'
+        next_param_is_output_file = False
         for orig in self.cmdlist:       
-            if orig.startswith(opt_prefix):
-                orig = orig[len(opt_prefix):]
+
+            if next_param_is_output_file:
+                next_param_is_output_file = False
+                new_output_file = uniform_filename(orig)               
+                new_output_file = get_all_but_last_path_component(new_output_file)
+                makedirs(new_output_file, exist_ok=True)
+            elif orig == opt_prefix_GCC:
+                next_param_is_output_file = True
+            elif orig.startswith(opt_prefix_VC):
+                orig = orig[len(opt_prefix_VC):]
                 new_debug_dir = uniform_filename(orig)
                 #new_debug_dir = storage_dir() + '/' + orig
-                orig = opt_prefix + new_debug_dir
+                orig = opt_prefix_VC + new_debug_dir
                 if make_dir_but_last(new_debug_dir):
                     makedirs(new_debug_dir, exist_ok=True)
             new_cmdline.append(orig)   
