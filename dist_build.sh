@@ -1,7 +1,7 @@
 
-export DBUILD_ROOT=$HOME/source/repos/dist_build/src
+export DBUILD_ROOT=$HOME/source/repos/dist_build/src/dist/dist_build
 
+#export PATH=%PATH%;%DBUILD_ROOT%
 
-export PYTHONPATH=$DBUILD_ROOT:$PYTHONPATH
+$DBUILD_ROOT/dist_build.exe  $@
 
-python -m src.dist_build $@
