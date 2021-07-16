@@ -1,0 +1,9 @@
+
+#include(${CMAKE_CURRENT_LIST_DIR}/internal/common.cmake)
+
+set(CMAKE_CXX_STANDARD 11)
+
+message("CURRENT PROJ SOURCE DIR ${CMAKE_PROJ_DIR}")
+
+set(CMAKE_C_COMPILER_LAUNCHER ${CMAKE_PROJ_DIR}/ms_dist_build.cmd CACHE STRING "")
+set(CMAKE_CXX_COMPILER_LAUNCHER ${CMAKE_PROJ_DIR}/ms_dist_build.cmd CACHE STRING "")

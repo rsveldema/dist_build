@@ -71,6 +71,11 @@ On the build machines in your public/private cloud you use:
 
 ## Installation:
 
+Prerequisites: 
+    - python 3.8.3
+    - pip
+    - tested with Linux and Windows
+
 ```bash
 pip install -r requirements.txt 
 sh generate_dist_build_executable.sh
