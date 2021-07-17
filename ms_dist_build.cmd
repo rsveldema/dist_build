@@ -1,5 +1,5 @@
 
-set DBUILD_ROOT=%HOME%/source/repos/dist_build/src/dist/dist_build
+set DBUILD_ROOT=%HOME%/dist_build/bin
 
 set PATH=%PATH%;%DBUILD_ROOT%
 

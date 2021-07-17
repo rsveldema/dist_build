@@ -55,6 +55,8 @@ pip install -r requirements.txt
 sh generate_dist_build_executable.sh
 ```
 
+NOTE: when running pyinstaller you might see an error: "SyntaxError: invalid syntax" come by. This is a problem in pyinstaller not recognizing the newer async syntax. This can be ignored.
+
 Next adapt the config.json to add your include dirs (in the config.json on the development machine) and prefered number of cores to use (on the build machines).
 
 
