@@ -1,5 +1,6 @@
 # Todos
 
+- add benchmarks
 - when seeing a compile error that an include couldn't be found, let the job-syncer auto-patch the ~/dist_build/config.json to add the missing include path
     - after patching the config.json we could re-upload the headers and restart the compile-job
 - compiler command-line translation:
