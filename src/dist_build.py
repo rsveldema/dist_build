@@ -1,4 +1,5 @@
 from asyncio.subprocess import Process
+from src.file_utils import create_client_ssl_context
 import subprocess
 from typing import List
 from aiohttp.client import ClientSession
@@ -29,7 +30,18 @@ def unpack_string(str:bytes):
         decoded = decoded[2:-1]
     return decoded
 
-async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, cmdline:str, syncer_host:str):
+
+async def sendCleanRequestToSyncer(loop, cmdline, syncer_host):   
+    async with aiohttp.ClientSession() as session:
+        client_sslcontext = create_client_ssl_context()
+        uri = syncer_host + '/clean'
+        data = aiohttp.FormData()
+        r = await session.post(uri, data = data, ssl=client_sslcontext)
+        body = await r.read()
+        assert body.decode() == "ok"
+
+
+async def start_compile_job(session:ClientSession, client_sslcontext: ssl.SSLContext, cmdline:str, syncer_host:str):
     uri = syncer_host + '/push_compile_job'
     files = {}
 
@@ -50,7 +62,7 @@ async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, c
     data.add_field('cmdline', json.dumps(cmdline))
     data.add_field('env', json.dumps(dict(os.environ)))
     #print("start----------------")
-    r = await session.post(uri, data = data, ssl=sslcontext)
+    r = await session.post(uri, data = data, ssl=client_sslcontext)
     body = await r.read()
     all_files = deserialize_all_files_from_stream(io.BytesIO(body))
     #print(f"received {len(all_files)} files")
@@ -77,20 +89,15 @@ async def start_compile_job(session:ClientSession, sslcontext: ssl.SSLContext, c
     sys.exit(error_code)
 
 
-async def sendDataToSyncer(loop, cmdline, syncer_host):
-    session = aiohttp.ClientSession()    
-    client_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-    #sslcontext.load_verify_locations('certs/server.pem')
-    client_sslcontext.check_hostname = False
-    client_sslcontext.verify_mode = ssl.CERT_NONE
-    #sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')    
-    
-    try:
-        await start_compile_job(session, client_sslcontext, cmdline, syncer_host)
-    except KeyboardInterrupt:
-        await kill_compile_job(session, client_sslcontext, syncer_host)
+async def sendCompilationRequestToSyncer(loop, cmdline, syncer_host):
+    async with aiohttp.ClientSession() as session:
+        client_sslcontext = create_client_ssl_context()
+        
+        try:
+            await start_compile_job(session, client_sslcontext, cmdline, syncer_host)
+        except KeyboardInterrupt:
+            await kill_compile_job(session, client_sslcontext, syncer_host)
 
-    await session.close()
 
 
 
@@ -131,16 +138,16 @@ def main():
         run_cmd_locally(cmdline)
         return
 
-
-    #print("GREETINGS!!!!!!!!!!!")
-    #print(cmdline)
+    loop = asyncio.get_event_loop()
 
     if len(cmdline) == 0:
         print("Usage: dist_build.py <compiler> <compiler arguments>")
         sys.exit(1)
-    
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(sendDataToSyncer(loop, cmdline, get_syncer_host()))
+
+    if cmdline[0] == "clean":
+        loop.run_until_complete(sendCleanRequestToSyncer(loop, cmdline, get_syncer_host()))
+    else:
+        loop.run_until_complete(sendCompilationRequestToSyncer(loop, cmdline, get_syncer_host()))
 
 
 if __name__ == "__main__":

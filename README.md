@@ -25,6 +25,8 @@ To keep the headers up-to-date, the JobQueue manager keeps track of all changes 
 All downloaded includes are copied there by the workers, complete with the path the include file came from.
 When compiling, the compiler's invocation is examined to change the include paths to point to the downloaded location in the sandbox.
 
+**Each time the syncer starts it will start copying the header files found in config.json's dirs variable over to the worker machines**.
+
 
 
 ## Security
