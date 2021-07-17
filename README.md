@@ -8,13 +8,13 @@ Then each of the four machines receives a portion of the compile jobs and we get
 
 To make the work distribution fair over the machines, we perform work-stealing.
 The jobQueue machine maintains a queue of compiles yet-to-do.
-Each worker, once idle, asks the JobQueue manage for work (the workers otherwise poll the syncer for new work)
+Each worker, once idle, asks the JobQueue manager for work (the workers otherwise poll the syncer for new work)
 It then fetches the command line to execute (here 'gcc -c fileX.c').
 
 
 ## Managing include files
 
-Instead of pre-processing at the development machine (like [distcc](https://github.com/distcc/distcc)) we send the all include files to all cloud machines.
+Instead of pre-processing at the development machine (like [distcc](https://github.com/distcc/distcc)) the JobQueue manager send all include files to all cloud machines.
 This has the following reprocutions:
 - header files are only read once,
 - changes to header files must be propagated to the workers to keep them up-to-date.
