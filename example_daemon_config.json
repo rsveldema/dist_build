@@ -1,0 +1,4 @@
+{
+    "syncer": "https://localhost:5000",
+    "num_cores": 4
+}

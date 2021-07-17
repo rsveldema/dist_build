@@ -1,0 +1,13 @@
+{
+    "hosts": [
+        "localhost:8443"
+    ],
+    "syncer": "https://localhost:5000",
+    "dirs": [
+        "/Users/rsvel/source/repos/include_syncer/tests"
+    ],
+    "copied_already": [
+        "/opt/boost"
+    ],
+    "num_cores": 4
+}

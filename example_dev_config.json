@@ -5,6 +5,5 @@
     "syncer": "https://localhost:5000",
     "dirs": [
         "/Users/rsvel/source/repos/include_syncer/tests"
-    ],
-    "num_cores": 4
+    ]
 }

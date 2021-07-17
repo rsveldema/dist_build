@@ -14,7 +14,7 @@ It then fetches the command line to execute (here 'gcc -c fileX.c').
 
 ## Managing include files
 
-Instead of pre-processing at the development machine (like [distcc](https://github.com/distcc/distcc)) the JobQueue manager send all include files to all cloud machines.
+Instead of pre-processing at the development machine (like [distcc](https://github.com/distcc/distcc)) the JobQueue manager sends all include files to all cloud machines.
 This has the following reprocutions:
 - header files are only read once,
 - changes to header files must be propagated to the workers to keep them up-to-date.
@@ -44,11 +44,23 @@ To do so, execute the 'generate_dist_build_executable.sh' script.
 
 ## Usage
 
+##### Step 1.
+
+On the build machines in your public/private cloud you use:
+
+```bash
+    python daemon.py 
+```
+
+##### Step 2.
+
 To start the JobQueue manager, run this in a terminal on the machine you're doing development on:
 
 ```bash
     python syncer.py
 ```
+
+##### Step 3.
 
 On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build like so:
 
@@ -62,14 +74,8 @@ python dist_build.py /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Com
       tests/hello.c
 ```
 
-On the build machines in your public/private cloud you use:
 
-```bash
-    python daemon.py 
-```
-
-
-## Installation:
+## Installation
 
 Prerequisites: 
     - python 3.8.3
