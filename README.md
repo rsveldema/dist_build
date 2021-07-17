@@ -49,7 +49,10 @@ To do so, execute the 'generate_dist_build_executable.sh' script.
 On the build machines in your public/private cloud you use:
 
 ```bash
-    python daemon.py 
+mkdir ~/dist_build
+cp example_daemon_config.json ~/dist_build/config.json
+< edit ~/dist_build/config.json >
+python daemon.py 
 ```
 
 ##### Step 2.
@@ -57,21 +60,33 @@ On the build machines in your public/private cloud you use:
 To start the JobQueue manager, run this in a terminal on the machine you're doing development on:
 
 ```bash
-    python syncer.py
+mkdir ~/dist_build
+cp example_dev_config.json ~/dist_build/config.json
+< edit ~/dist_build/config.json >
+python syncer.py
 ```
 
 ##### Step 3.
 
-On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build like so:
+On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build.exe.
+For example:
+```bash
+gcc <compiler-args> -c test.c
+```
+becomes:
+```bash
+dist_build.exe gcc <compiler-args> -c test.c
+```
+
+Simulilarly, for microsoft's visual studio compiler, it becomes:
 
 ```bash
-    
-python dist_build.py /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/bin/Hostx64/x64/cl.exe \
-      /I /Program\ Files\ \(x86\)/Windows\ Kits/10/Include/10.0.19041.0/ucrt \
-      /I /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/include \
-      /c \
-     /Fo"build/" /EHsc \
-      tests/hello.c
+dist_build.exe /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/bin/Hostx64/x64/cl.exe \
+        /I /Program\ Files\ \(x86\)/Windows\ Kits/10/Include/10.0.19041.0/ucrt \
+        /I /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/include \
+        /c \
+        /Fo"build/" /EHsc \
+        tests/hello.c
 ```
 
 
@@ -128,12 +143,12 @@ The process:
 You can query the status of a single worker using:
 
 ```bash
-     curl -k https://<IP>:8443/status
+curl -k https://<IP>:8443/status
 ```
 
 You can query the aggregate status over all workers by querying the JobManager:
 
 ```bash
-     curl -k https://<IP of syncer>:5000/status
+curl -k https://<IP of syncer>:5000/status
 ```
 where in a simple setup the IP of the syncer is localhost.
