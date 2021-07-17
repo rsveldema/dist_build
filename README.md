@@ -142,6 +142,15 @@ dist_build/src/dist/dist_build.exe /Program\ Files\ \(x86\)/Microsoft\ Visual\ S
         tests/hello.c
 ```
 
+dist_build.exe has the following options:
+   - "distbuild install"
+        - will copy over the header files reachable from 'dirs' in ~/dist_build/config.json
+   - "distbuild clean"
+        - removes everything outside of 'bin' and 'config.json' from ~/dist_build/
+   - "distbuild status"
+        - asks the syncer for the status of the system (syncer will ask each worker in turn)
+   - "distbuild /path/to/compiler [compiler options]
+
 
 
 ## Monitoring

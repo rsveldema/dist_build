@@ -173,12 +173,14 @@ async def serialize_all_files_to_stream(stream_response: web.StreamResponse, out
 """
 same as the serialize_all_files_to_streams's loop body, compatiable to deserialize_all_files_from_stream_no_meta
 """        
-def serialize_file_to_stream(data:bytearray, path, content):
-        data.extend(len(path).to_bytes(4, 'little'))
-        data.extend(path.encode('utf-8'))
-        data.extend(len(content).to_bytes(4, 'little'))
-        data.extend(content)
-
+def serialize_file_to_stream(data:bytearray, path, content) -> int:
+    prev_len = len(data)
+    data.extend(len(path).to_bytes(4, 'little'))
+    data.extend(path.encode('utf-8'))
+    data.extend(len(content).to_bytes(4, 'little'))
+    data.extend(content)
+    current_len = len(data)
+    return current_len - prev_len
 
 """
 compatible to serialize_all_files_to_stream's single string write

@@ -38,7 +38,24 @@ async def sendCleanRequestToSyncer(loop, cmdline, syncer_host):
         data = aiohttp.FormData()
         r = await session.post(uri, data = data, ssl=client_sslcontext)
         body = await r.read()
-        assert body.decode() == "ok"
+        print(f"response: {body.decode()}")
+
+async def sendInstallRequestToSyncer(loop, cmdline, syncer_host):   
+    async with aiohttp.ClientSession() as session:
+        client_sslcontext = create_client_ssl_context()
+        uri = syncer_host + '/install'
+        data = aiohttp.FormData()
+        r = await session.post(uri, data = data, ssl=client_sslcontext)
+        body = await r.read()
+        print(f"response: {body.decode()}")
+
+async def sendStatusRequestToSyncer(loop, cmdline, syncer_host):   
+    async with aiohttp.ClientSession() as session:
+        client_sslcontext = create_client_ssl_context()
+        uri = syncer_host + '/status'
+        r = await session.get(uri, ssl=client_sslcontext)
+        body = await r.read()
+        print(f"response: {body.decode()}")
 
 
 async def start_compile_job(session:ClientSession, client_sslcontext: ssl.SSLContext, cmdline:str, syncer_host:str):
@@ -134,18 +151,23 @@ def run_cmd_locally(cmdline):
 def main():
     cmdline:List[str] = sys.argv[1:]
 
-    if is_link_job(cmdline):
-        run_cmd_locally(cmdline)
-        return
-
-    loop = asyncio.get_event_loop()
-
     if len(cmdline) == 0:
         print("Usage: dist_build.py <compiler> <compiler arguments>")
         sys.exit(1)
 
+    loop = asyncio.get_event_loop()
     if cmdline[0] == "clean":
         loop.run_until_complete(sendCleanRequestToSyncer(loop, cmdline, get_syncer_host()))
+        return
+    elif cmdline[0] == "install":
+        loop.run_until_complete(sendInstallRequestToSyncer(loop, cmdline, get_syncer_host()))
+        return
+    elif cmdline[0] == "status":
+        loop.run_until_complete(sendStatusRequestToSyncer(loop, cmdline, get_syncer_host()))
+        return
+
+    if is_link_job(cmdline):
+        run_cmd_locally(cmdline)
     else:
         loop.run_until_complete(sendCompilationRequestToSyncer(loop, cmdline, get_syncer_host()))
 

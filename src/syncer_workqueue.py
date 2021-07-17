@@ -1,19 +1,25 @@
 import logging
+import aiohttp
+
+from aiohttp_session import setup
+from aio_server import aio_server
+from typing import Dict, List
+from options import DistBuildOptions
+from syncer_include_installer import async_install_headers
 from config import get_include_dirs, get_copied_already_dirs, get_build_hosts
 import ssl
 import json
 import base64
 from aiohttp import web, ClientSession
 import asyncio
-from aiohttp.web_response import json_response
-from aiohttp_session import setup, get_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from typing import Dict, List
 from file_utils import FILE_PREFIX_IN_FORM, serialize_all_files_to_stream, create_client_ssl_context
 from urllib.parse import unquote
 
 job_counter = 0
+global_options: DistBuildOptions = None
+global_session: aiohttp.ClientSession = None
 
 class RemoteJob:
     files: Dict[str, str]
@@ -157,6 +163,29 @@ async def handle_status_request(request):
 
     return web.json_response(response)
 
+async def handle_clean_request(request):
+    global global_session
+    response = []
+    session = global_session
+    client_sslcontext = create_client_ssl_context()
+
+    for p in get_build_hosts():
+        uri = "https://" + p + "/clean"
+        r = await session.get(uri, ssl=client_sslcontext)
+        body = await r.read()
+        logging.debug(f"received: {body}")
+
+        response.append( json.loads(body.decode()) )
+
+    return web.json_response(response)
+
+async def handle_install_request(request):
+    global global_session
+    session = global_session
+    client_sslcontext = create_client_ssl_context()
+    scheduled_broadcast_tasks: Dict[str, bool] = {}
+    stats = await async_install_headers(session, client_sslcontext, global_options, scheduled_broadcast_tasks)
+    return web.json_response(json.dumps(stats.to_dict()))
 
 async def make_app():
     app = web.Application()
@@ -170,11 +199,36 @@ async def make_app():
         web.post('/pop_compile_job', pop_compile_job),
         web.post('/notify_compile_job_done', notify_compile_job_done),
         web.get('/status', handle_status_request),
+        web.post('/clean', handle_clean_request),
+        web.post('/install', handle_install_request),
     ])
     return app
 
 
-def wait_for_incoming_requests():
+async def wait_for_incoming_requests(options: DistBuildOptions, session: aiohttp.ClientSession):
+    global global_options
+    global global_session
+
+    global_session = session
+    global_options = options
+
     server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
-    web.run_app(make_app(), ssl_context=server_sslcontext, port=5000)
+  
+    await aio_server(
+                make_app(),
+                #host=host,
+                port=5000,
+                #path=path,
+                #sock=sock,
+                #shutdown_timeout=shutdown_timeout,
+                ssl_context=server_sslcontext,
+                #print=print,
+                #backlog=backlog,
+                #access_log_class=access_log_class,
+                #access_log_format=access_log_format,
+                #access_log=access_log,
+                #handle_signals=handle_signals,
+                #reuse_address=reuse_address,
+                #reuse_port=reuse_port,
+            )

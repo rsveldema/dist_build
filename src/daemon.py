@@ -4,7 +4,7 @@ import socket
 from profiler import Profiler
 from serializer import Serializer
 from options import DistBuildOptions
-from os import mkdir, getenv, path, makedirs, chdir
+import os
 import ssl
 import typing
 import json
@@ -22,6 +22,7 @@ import asyncio
 import pathlib
 import time
 from file_utils import get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+import shutil
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
@@ -40,7 +41,7 @@ async def install_file(request: aiohttp.RequestInfo):
         content = ret[pathprop]
 
         install_path = path_join(storage_dir(), pathprop)
-        install_dir = path.dirname(install_path).replace('/', '\\')
+        install_dir = os.path.dirname(install_path).replace('/', '\\')
 
         #if install_path.find("winerror.h") >= 0:
         #print(f"INSTALL DIR FOUND FOR {install_path} and {storage_dir()}")
@@ -49,11 +50,11 @@ async def install_file(request: aiohttp.RequestInfo):
 
 
         if options.verbose():
-            logging.debug('going to install ' + path.basename(install_path))
+            logging.debug('going to install ' + os.path.basename(install_path))
             logging.debug(" AT  " + install_dir)
 
-        if not path.isdir(install_dir):
-            makedirs(install_dir)
+        if not os.path.isdir(install_dir):
+            os.makedirs(install_dir)
 
         write_binary_to_file(install_path, content)
 
@@ -86,6 +87,46 @@ async def show_status(request):
     response_data = {"profile":global_profiler.spent, "performance":performance_data}
     return aiohttp.web.json_response(response_data)
 
+def onerror(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
+
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    import stat
+    if not os.access(path, os.W_OK):
+        # Is the error an access error ?
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+
+async def daemon_clean(request):  
+    data = await request.post()
+
+    keep = ["bin", "config.json"]
+    result = "ok"
+
+    for item in os.listdir(storage_dir()):
+        if not (item in keep):
+            path = storage_dir() + '/' + item
+            logging.info("deleting " + path)
+            try:
+                if os.path.isdir(path):
+                    shutil.rmtree(path, onerror=onerror)
+                else:
+                    os.remove(path)
+            except Exception as e:
+                result = f"failed: {e}"
+                
+    response_data = {"host": socket.gethostname(), "result": result}
+    return aiohttp.web.json_response(response_data)
+
 
 async def make_app(options: DistBuildOptions, profiler: Profiler):
     global global_profiler
@@ -100,6 +141,7 @@ async def make_app(options: DistBuildOptions, profiler: Profiler):
     setup(app, EncryptedCookieStorage(secret_key))
     app.add_routes([aiohttp.web.post('/install_file', install_file)])
     app.add_routes([aiohttp.web.get('/status', show_status)])
+    app.add_routes([aiohttp.web.get('/clean', daemon_clean)])    
     return app
 
 
@@ -142,7 +184,7 @@ class LocalBuildJob:
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
         notify_job_done()        
-        chdir(storage_dir())
+        os.chdir(storage_dir())
  
 
     def change_dir(self):
@@ -156,8 +198,8 @@ class LocalBuildJob:
             found_env_cwd = uniform_filename(found_env_cwd)
             logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
             cwd = storage_dir() + '/' + found_env_cwd
-            makedirs(cwd, exist_ok=True)
-            chdir(cwd)
+            os.makedirs(cwd, exist_ok=True)
+            os.chdir(cwd)
         else:
             print("failed to find CWD or PWD in env. variables. Can't change to original build dir in sandbox to allow relative includes to work")
 
@@ -172,7 +214,7 @@ class LocalBuildJob:
                 orig = uniform_filename(orig)
                 new_debug_dir = storage_dir() + '/' + orig
                 orig = opt_prefix + new_debug_dir
-                makedirs(new_debug_dir, exist_ok=True)
+                os.makedirs(new_debug_dir, exist_ok=True)
             new_cmdline.append(orig)   
         self.cmdlist = new_cmdline
 
@@ -193,7 +235,7 @@ class LocalBuildJob:
                 orig = self.cmdlist[i]
             
                 new_dep_dir = get_all_but_last_path_component(orig)
-                makedirs(new_dep_dir, exist_ok=True)
+                os.makedirs(new_dep_dir, exist_ok=True)
 
             if orig == opt_prefix_GCC:
                 new_cmdline.append(orig)  
@@ -201,14 +243,14 @@ class LocalBuildJob:
                 orig = self.cmdlist[i]
                 new_output_file = uniform_filename(orig)               
                 new_output_file = get_all_but_last_path_component(new_output_file)
-                makedirs(new_output_file, exist_ok=True)
+                os.makedirs(new_output_file, exist_ok=True)
             elif orig.startswith(opt_prefix_VC):
                 orig = orig[len(opt_prefix_VC):]
                 new_debug_dir = uniform_filename(orig)
                 #new_debug_dir = storage_dir() + '/' + orig
                 orig = opt_prefix_VC + new_debug_dir
                 if make_dir_but_last(new_debug_dir):
-                    makedirs(new_debug_dir, exist_ok=True)
+                    os.makedirs(new_debug_dir, exist_ok=True)
 
             new_cmdline.append(orig)  
             i += 1 
@@ -267,8 +309,8 @@ class LocalBuildJob:
     def save_file(self, old_path, content) -> str:
         old_path = uniform_filename(old_path)
         container_path = storage_dir() + '/' + old_path
-        container_dir = path.dirname(container_path)
-        makedirs(container_dir, exist_ok=True)
+        container_dir = os.path.dirname(container_path)
+        os.makedirs(container_dir, exist_ok=True)
         write_text_to_file(container_path, content)
         #print("wrote " + container_path)
         return container_path
