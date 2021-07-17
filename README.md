@@ -43,55 +43,6 @@ We therefore can optionally run the dist_build script wrapped in an executable t
 
 To do so, execute the 'generate_dist_build_executable.sh' script.
 
-
-## Usage
-
-##### Step 1.
-
-On the build machines in your public/private cloud you use:
-
-```bash
-mkdir ~/dist_build
-cp example_daemon_config.json ~/dist_build/config.json
-< edit ~/dist_build/config.json >
-python daemon.py 
-```
-
-##### Step 2.
-
-To start the JobQueue manager, run this in a terminal on the machine you're doing development on:
-
-```bash
-mkdir ~/dist_build
-cp example_dev_config.json ~/dist_build/config.json
-< edit ~/dist_build/config.json >
-python syncer.py
-```
-
-##### Step 3.
-
-On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build.exe.
-For example:
-```bash
-gcc <compiler-args> -c test.c
-```
-becomes:
-```bash
-dist_build.exe gcc <compiler-args> -c test.c
-```
-
-Simulilarly, for microsoft's visual studio compiler, it becomes:
-
-```bash
-dist_build.exe /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/bin/Hostx64/x64/cl.exe \
-        /I /Program\ Files\ \(x86\)/Windows\ Kits/10/Include/10.0.19041.0/ucrt \
-        /I /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/include \
-        /c \
-        /Fo"build/" /EHsc \
-        tests/hello.c
-```
-
-
 ## Installation
 
 Prerequisites: 
@@ -137,6 +88,55 @@ The process:
      - place the include path in "dirs" and start the syncer to let the system copy over the includes.
 2) Add the include path to the 'copied_already' variable.
      - now the system will monitor for changes to these directories but will not copy them over
+
+
+
+## Usage
+
+##### Step 1.
+
+On the build machines in your public/private cloud you use:
+
+```bash
+mkdir ~/dist_build
+cp example_daemon_config.json ~/dist_build/config.json
+< edit ~/dist_build/config.json >
+python daemon.py 
+```
+
+##### Step 2.
+
+To start the JobQueue manager, run this in a terminal on the machine you're doing development on:
+
+```bash
+mkdir ~/dist_build
+cp example_dev_config.json ~/dist_build/config.json
+< edit ~/dist_build/config.json >
+python syncer.py
+```
+
+##### Step 3.
+
+On your development machine, instead of calling gcc or cl.exe directly, prefix it with dist_build.exe.
+For example:
+```bash
+gcc <compiler-args> -c test.c
+```
+becomes:
+```bash
+dist_build/src/dist/dist_build.exe gcc <compiler-args> -c test.c
+```
+
+Simulilarly, for microsoft's visual studio compiler, it becomes:
+
+```bash
+dist_build/src/dist/dist_build.exe /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/bin/Hostx64/x64/cl.exe \
+        /I /Program\ Files\ \(x86\)/Windows\ Kits/10/Include/10.0.19041.0/ucrt \
+        /I /Program\ Files\ \(x86\)/Microsoft\ Visual\ Studio/2019/Community/VC/Tools/MSVC/14.29.30037/include \
+        /c \
+        /Fo"build/" /EHsc \
+        tests/hello.c
+```
 
 
 
