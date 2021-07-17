@@ -112,9 +112,9 @@ class LocalBuildJob:
     user_include_roots: List[str]
     profiler: Profiler
 
-    def __init__(self, cmdline: typing.List[str], env: typing.Dict[str, str], id:str, client_sslcontext, session, files: Dict[str, str], options: DistBuildOptions, user_include_roots: List[str], profiler: Profiler):
+    def __init__(self, cmdline: typing.List[str], env: str, id:str, client_sslcontext, session, files: Dict[str, str], options: DistBuildOptions, user_include_roots: List[str], profiler: Profiler):
         self.cmdlist = json.loads(cmdline)
-        self.env = env
+        self.env = json.loads(env)
         self.profiler = profiler
         self.id = id
         self.files = json.loads(files)
@@ -134,13 +134,32 @@ class LocalBuildJob:
 
     async def run(self):
         notify_new_job_started()
+        self.change_dir()
         self.save_files()
         self.change_include_dirs()
         self.change_debug_dirs()
         self.change_output_dirs()
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
-        notify_job_done()
+        notify_job_done()        
+        chdir(storage_dir())
+ 
+
+    def change_dir(self):
+        found_env_cwd:str = None
+        if "PWD" in self.env:
+            found_env_cwd = self.env["PWD"]
+        elif "CWD" in self.env:
+            found_env_cwd = self.env["CWD"]
+
+        if found_env_cwd != None:
+            found_env_cwd = uniform_filename(found_env_cwd)
+            logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
+            cwd = storage_dir() + '/' + found_env_cwd
+            makedirs(cwd, exist_ok=True)
+            chdir(cwd)
+        else:
+            print("failed to find CWD or PWD in env. variables. Can't change to original build dir in sandbox to allow relative includes to work")
 
     def change_debug_dirs(self):
         # when seeing: /FdCMakeFiles\cmTC_ea5a2.dir
@@ -163,16 +182,26 @@ class LocalBuildJob:
         new_cmdline:List[str] = []
         opt_prefix_VC = '/Fo'
         opt_prefix_GCC = '-o'
-        next_param_is_output_file = False
-        for orig in self.cmdlist:       
 
-            if next_param_is_output_file:
-                next_param_is_output_file = False
+        i = 0
+        while (i < len(self.cmdlist)):
+            orig = self.cmdlist[i]
+
+            if orig == '-MF':
+                new_cmdline.append(orig)  
+                i += 1
+                orig = self.cmdlist[i]
+            
+                new_dep_dir = get_all_but_last_path_component(orig)
+                makedirs(new_dep_dir, exist_ok=True)
+
+            if orig == opt_prefix_GCC:
+                new_cmdline.append(orig)  
+                i += 1
+                orig = self.cmdlist[i]
                 new_output_file = uniform_filename(orig)               
                 new_output_file = get_all_but_last_path_component(new_output_file)
                 makedirs(new_output_file, exist_ok=True)
-            elif orig == opt_prefix_GCC:
-                next_param_is_output_file = True
             elif orig.startswith(opt_prefix_VC):
                 orig = orig[len(opt_prefix_VC):]
                 new_debug_dir = uniform_filename(orig)
@@ -180,7 +209,10 @@ class LocalBuildJob:
                 orig = opt_prefix_VC + new_debug_dir
                 if make_dir_but_last(new_debug_dir):
                     makedirs(new_debug_dir, exist_ok=True)
-            new_cmdline.append(orig)   
+
+            new_cmdline.append(orig)  
+            i += 1 
+
         self.cmdlist = new_cmdline
 
     def change_include_dirs(self):
@@ -248,7 +280,7 @@ class LocalBuildJob:
         stderr = ""
         stdout = ""
         try:
-            logging.debug("EXEC: " + str(self.cmdlist))
+            logging.info("EXEC: " + str(self.cmdlist))
 
             program = self.cmdlist[0]
             args = self.cmdlist[1:]
@@ -415,9 +447,6 @@ def main():
 
     server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
-
-    logging.debug("CHANGING RUN DIR TO " + storage_dir())
-    chdir(storage_dir())
 
     loop = asyncio.get_event_loop()
 
