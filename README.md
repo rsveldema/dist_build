@@ -168,3 +168,13 @@ You can query the aggregate status over all workers by querying the JobManager:
 curl -k https://<IP of syncer>:5000/status
 ```
 where in a simple setup the IP of the syncer is localhost.
+
+
+## Testing
+
+- tests/simple
+    - run test2_gcc.sh to see if your setup works with gcc
+    - run_test1_msvc.sh to test if your vc++ install works
+- test/cmake
+    - example of how to integrate dist_build with cmake
+    
