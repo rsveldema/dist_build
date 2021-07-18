@@ -103,9 +103,9 @@ On the build machines in your public/private cloud you use:
 
 ```bash
 mkdir ~/dist_build
-cp example_daemon_config.json ~/dist_build/config.json
+cp example_worker_config.json ~/dist_build/config.json
 < edit ~/dist_build/config.json >
-python daemon.py 
+python worker.py 
 ```
 
 ##### Step 2.

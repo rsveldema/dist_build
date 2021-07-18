@@ -106,7 +106,7 @@ def onerror(func, path, exc_info):
     else:
         raise
 
-async def daemon_clean(request):  
+async def worker_clean(request):  
     data = await request.post()
 
     keep = ["bin", "config.json"]
@@ -141,7 +141,7 @@ async def make_app(options: DistBuildOptions, profiler: Profiler):
     setup(app, EncryptedCookieStorage(secret_key))
     app.add_routes([aiohttp.web.post('/install_file', install_file)])
     app.add_routes([aiohttp.web.get('/status', show_status)])
-    app.add_routes([aiohttp.web.get('/clean', daemon_clean)])    
+    app.add_routes([aiohttp.web.get('/clean', worker_clean)])    
     return app
 
 

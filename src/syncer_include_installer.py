@@ -31,7 +31,7 @@ async def do_broadcast_of_serialized_data(session: aiohttp.ClientSession, serial
             post_result = await post_response.read()
             post_result = post_result.decode('utf-8')
             if post_result != "ok":
-                logging.error(f"post result = {post_result} when trying to send a header file chunk to daemon {host}")
+                logging.error(f"post result = {post_result} when trying to send a header file chunk to worker at {host}")
                 sys.exit(1)
 
         # print("result = " + str(r))

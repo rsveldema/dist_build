@@ -3,7 +3,7 @@
 requests
 watchdog
 
-## for the daemon
+## for the worker
 flask
 pyopenssl
 tqdm

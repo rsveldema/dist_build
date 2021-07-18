@@ -9,11 +9,11 @@
 - automated testing using github devops
 - create a script to analyze CMakeLists.txt to auto-configure the include paths in ~/dist_build/config.json
 - a dashboard
-- put the daemon and syncer in containers
+- put the worker and syncer in containers
 - run compiles on the build machines inside (windows) containers
 - setup script to re-generate the certificates
-- linux setup script to install the daemon as a systemd daemon
-- windows setup script to install the daemon as a windows service
+- linux setup script to install the worker as a systemd service
+- windows setup script to install the worker as a windows service
 - OSx support
 - performance optimizations for uploads/downloads
 - wait for all uploads to header files to finish before starting a build

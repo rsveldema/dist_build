@@ -109,7 +109,7 @@ async def push_compile_job(request):
 
 
 """
-sent by daemon to syncer
+sent by worker to syncer
 """
 async def notify_compile_job_done(request):
     payload: List[str] = await request.post()
