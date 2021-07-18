@@ -17,7 +17,7 @@ from aiohttp.formdata import FormData
 from aiohttp_session import setup
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography import fernet
-from config import get_syncer_host, storage_dir, num_available_cores
+from config import get_syncer_host, source_storage_dir
 import asyncio
 import pathlib
 import time
@@ -40,14 +40,8 @@ async def install_file(request: aiohttp.RequestInfo):
     for pathprop in ret.keys():
         content = ret[pathprop]
 
-        install_path = path_join(storage_dir(), pathprop)
+        install_path = path_join(source_storage_dir(), pathprop)
         install_dir = os.path.dirname(install_path).replace('/', '\\')
-
-        #if install_path.find("winerror.h") >= 0:
-        #print(f"INSTALL DIR FOUND FOR {install_path} and {storage_dir()}")
-
-        assert(install_path.find("dist_build") > 0)
-
 
         if options.verbose():
             logging.debug('going to install ' + os.path.basename(install_path))
@@ -112,9 +106,9 @@ async def worker_clean(request):
     keep = ["bin", "config.json"]
     result = "ok"
 
-    for item in os.listdir(storage_dir()):
+    for item in os.listdir(source_storage_dir()):
         if not (item in keep):
-            path = storage_dir() + '/' + item
+            path = source_storage_dir() + '/' + item
             logging.info("deleting " + path)
             try:
                 if os.path.isdir(path):
@@ -184,7 +178,7 @@ class LocalBuildJob:
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
         notify_job_done()        
-        os.chdir(storage_dir())
+        os.chdir(source_storage_dir())
  
 
     def change_dir(self):
@@ -197,7 +191,7 @@ class LocalBuildJob:
         if found_env_cwd != None:
             found_env_cwd = uniform_filename(found_env_cwd)
             logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
-            cwd = storage_dir() + '/' + found_env_cwd
+            cwd = source_storage_dir() + '/' + found_env_cwd
             os.makedirs(cwd, exist_ok=True)
             os.chdir(cwd)
         else:
@@ -212,7 +206,7 @@ class LocalBuildJob:
             if orig.startswith(opt_prefix):
                 orig = orig[len(opt_prefix):]
                 orig = uniform_filename(orig)
-                new_debug_dir = storage_dir() + '/' + orig
+                new_debug_dir = source_storage_dir() + '/' + orig
                 orig = opt_prefix + new_debug_dir
                 os.makedirs(new_debug_dir, exist_ok=True)
             new_cmdline.append(orig)   
@@ -247,7 +241,7 @@ class LocalBuildJob:
             elif orig.startswith(opt_prefix_VC):
                 orig = orig[len(opt_prefix_VC):]
                 new_debug_dir = uniform_filename(orig)
-                #new_debug_dir = storage_dir() + '/' + orig
+                #new_debug_dir = source_storage_dir() + '/' + orig
                 orig = opt_prefix_VC + new_debug_dir
                 if make_dir_but_last(new_debug_dir):
                     os.makedirs(new_debug_dir, exist_ok=True)
@@ -267,7 +261,7 @@ class LocalBuildJob:
                 #print(f"TEST ME HERE {orig}")
                 if self.is_user_directory(orig):
                     orig = uniform_filename(orig) 
-                    new_cmd = storage_dir() + orig
+                    new_cmd = source_storage_dir() + orig
             if orig == '/I' or orig == '-I':
                found_include_directive_for_next_option = True
             elif orig.startswith('-I'):
@@ -277,7 +271,7 @@ class LocalBuildJob:
                 #print(f"TEST ME HERE2 {orig}")
                 if self.is_user_directory(orig):
                     orig = uniform_filename(orig)
-                    new_cmd = '-I' + storage_dir() + orig    
+                    new_cmd = '-I' + source_storage_dir() + orig    
                 else:
                     new_cmd = no_replacement      
 
@@ -308,7 +302,7 @@ class LocalBuildJob:
 
     def save_file(self, old_path, content) -> str:
         old_path = uniform_filename(old_path)
-        container_path = storage_dir() + '/' + old_path
+        container_path = source_storage_dir() + '/' + old_path
         container_dir = os.path.dirname(container_path)
         os.makedirs(container_dir, exist_ok=True)
         write_text_to_file(container_path, content)
