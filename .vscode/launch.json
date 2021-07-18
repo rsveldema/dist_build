@@ -12,10 +12,10 @@
             "module": "dist_build.syncer",
             "cwd": "${workspaceFolder}/src"
         },  {
-            "name": "Python: daemon",
+            "name": "Python: worker",
             "type": "python",
             "request": "launch",
-            "program": "daemon.py",
+            "program": "worker.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/src"
         }
