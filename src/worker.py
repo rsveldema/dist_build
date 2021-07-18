@@ -1,7 +1,7 @@
 from asyncio.subprocess import Process
 import logging
 import socket
-from profiler import Profiler
+from profiler import Profiler, get_worker_performance_data
 from serializer import Serializer
 from options import DistBuildOptions
 import os
@@ -23,7 +23,7 @@ import pathlib
 import time
 from file_utils import safe_write_text_to_file, safe_read_binary_content, file_exists, get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 import shutil
-from worker_local_job import LocalBuildJob, get_worker_performance_data
+from worker_local_job import LocalBuildJob
 
 ssl.match_hostname = lambda cert, hostname: True
 ssl.HAS_SNI = False
@@ -97,6 +97,11 @@ async def worker_clean(request):
 
 
 async def make_app(options: DistBuildOptions, profiler: Profiler):
+    # start the tasks to poll the syncer for new jobs:
+    for i in range(num_available_cores()):
+        asyncio.ensure_future( poll_job_queue(i, profiler) )
+
+
     global global_profiler
     # this server will only accept header files. We'll assume a 15 MByte upper limit on those.
     app = aiohttp.web.Application(client_max_size = 1024 * 1024 * 16)
@@ -173,12 +178,6 @@ def main():
 
     server_sslcontext = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
     server_sslcontext.load_cert_chain('certs/server.crt', 'certs/server.key')
-
-    loop = asyncio.get_event_loop()
-
-    for i in range(num_available_cores()):
-    #for i in range(1):
-        loop.create_task(poll_job_queue(i, profiler))
 
     aiohttp.web.run_app(make_app(options, profiler), ssl_context=server_sslcontext)
 

@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import ssl
+import time
 from typing import Dict
 from aiohttp import web
 import io
@@ -53,6 +55,8 @@ def safe_read_binary_content(path):
         if file_exists(path):
             #print("using explicit output: " + explicit_out)
             return read_binary_content(path)
+        else:
+            logging.error("FILE DOES NOT EXIST: " + path)
     except Exception as e:
         logging.error(f"failed to read {path} due to {e}")
     return None

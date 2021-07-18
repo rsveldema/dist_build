@@ -1,5 +1,6 @@
 from asyncio.subprocess import Process
 import os
+from time import sleep
 import aiohttp
 from config import get_syncer_host, source_storage_dir
 from file_utils import FILE_PREFIX_IN_FORM, get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, read_binary_content, safe_read_binary_content, safe_write_text_to_file, transform_filename_to_output_name, uniform_filename
@@ -8,32 +9,7 @@ from typing import Dict, List, Tuple
 import profiler
 import json
 import logging
-import time
 import asyncio
-
-_performance_data=[]
-num_current_jobs = 0
-
-def get_worker_performance_data():
-    return _performance_data
-
-def add_performance_data():
-    now = time.time()
-    perf = {'x': now, 'y' : num_current_jobs}
-    _performance_data.append(perf)
-
-
-def notify_new_job_started():
-    global num_current_jobs
-    num_current_jobs += 1
-    add_performance_data()
-
-def notify_job_done():
-    global num_current_jobs
-    num_current_jobs -= 1
-    add_performance_data()
-
-
 
 class LocalBuildJob:
     cmdlist: List[str]
@@ -54,7 +30,11 @@ class LocalBuildJob:
         self.session = session
         self.options = options
         self.user_include_roots = user_include_roots
-        self.username = self.env['USERNAME']
+        self.username = "dummy"
+        if "USERNAME" in self.env:
+            self.username = self.env['USERNAME']
+        elif "USER" in self.env:
+            self.username = self.env['USER']
         
     def is_user_directory(self, filename:str):        
         filename = uniform_filename(filename)
@@ -66,7 +46,7 @@ class LocalBuildJob:
         return False
 
     async def run(self):
-        notify_new_job_started()
+        profiler.notify_new_job_started()
         self.change_dir()
         self.save_files()
         self.change_include_dirs()
@@ -74,8 +54,8 @@ class LocalBuildJob:
         self.change_output_dirs()
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
-        notify_job_done()        
-        os.chdir(source_storage_dir(self.username))
+        profiler.notify_job_done()        
+        #os.chdir(source_storage_dir(self.username))
  
     def get_current_dir_from_env(self) ->str:
         found_env_cwd:str = None
@@ -86,7 +66,7 @@ class LocalBuildJob:
 
         if found_env_cwd != None:
             found_env_cwd  = uniform_filename(found_env_cwd)
-            logging.info("FOUND CWD/PWD in sent env: " + found_env_cwd)
+            logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
             found_env_cwd = source_storage_dir(self.username) + '/' + found_env_cwd
             os.makedirs(found_env_cwd, exist_ok=True)
         return found_env_cwd
@@ -241,15 +221,17 @@ class LocalBuildJob:
 
             program = self.cmdlist[0]
             args = self.cmdlist[1:]
-            ret:Process = await asyncio.subprocess.create_subprocess_exec(stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, *self.cmdlist )
-
+            proc:Process = await asyncio.subprocess.create_subprocess_exec(stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, *self.cmdlist )
             #print("trying to wait")
+            #exit_code = await proc.wait()
+            #stdout, stderr = await asyncio.wait_for(proc.communicate(), 1000)
+            stdout, stderr = await proc.communicate()
+            #proc.terminate()
+            #await proc.wait()
+            #await asyncio.sleep(0.5)
 
-            stdout, stderr = await ret.communicate()
-
-            exit_code = ret.returncode
-
-            #print(f"got stdout {stdout}, ret {exit_code}")
+            exit_code = proc.returncode
+            print(f"got stdout {stdout}, ret {exit_code} for {self.cmdlist}")
 
             stdout = stdout.decode()
             stderr = stderr.decode()
@@ -301,10 +283,10 @@ class LocalBuildJob:
             return True        
         return False
 
-    def append_output_files(self, outfiles: Dict[str, bytes]):
+    async def append_output_files(self, outfiles: Dict[str, bytes]):
         dependency_file = self.get_dependency_file()
         if dependency_file != None:
-            file_content =  safe_read_binary_content(dependency_file)
+            file_content = safe_read_binary_content(dependency_file)
             if file_content != None:
                 logging.debug("returning dependency file " + dependency_file)
                 outfiles[dependency_file] = file_content
@@ -314,6 +296,8 @@ class LocalBuildJob:
             file_content = safe_read_binary_content(explicit_out)
             if file_content != None:
                 outfiles[explicit_out] = file_content
+            else:
+                logging.error("failed to safe-read: " + explicit_out)
             return
 
         is_microsoft = self.is_using_microsoft_compiler()
@@ -331,7 +315,9 @@ class LocalBuildJob:
         outfiles: Dict[str, bytes] = {}
 
         if retcode == 0:
-            self.append_output_files(outfiles)
+            await self.append_output_files(outfiles)
+        else:
+            print(f"-------------------------RETODE {retcode} OFF FOR {self.cmdlist}")
 
         #print(f"output files are {outfiles}")
 
@@ -342,6 +328,7 @@ class LocalBuildJob:
         data.add_field('result', result)
         data.add_field('id', self.id)
         for file in outfiles:
+            print(f"REPLY FILE: " + file)
             data.add_field(FILE_PREFIX_IN_FORM + file, outfiles[file])
         r:aiohttp.ClientResponse = await self.session.post(uri, data = data, ssl=self.client_sslcontext)
         
