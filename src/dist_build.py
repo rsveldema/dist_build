@@ -1,5 +1,6 @@
 from asyncio.subprocess import Process
-from src.file_utils import create_client_ssl_context
+from src.config import current_user
+from src.file_utils import create_client_ssl_context, get_all_but_last_path_component
 import subprocess
 from typing import List
 from aiohttp.client import ClientSession
@@ -11,6 +12,7 @@ import io
 import sys
 import aiohttp
 import asyncio
+import logging
 from file_utils import RESULT_DUMMY_FILENAME, is_source_file, read_content, deserialize_all_files_from_stream, uniform_filename, write_binary_to_file
 import sys
 
@@ -36,6 +38,7 @@ async def sendCleanRequestToSyncer(loop, cmdline, syncer_host):
         client_sslcontext = create_client_ssl_context()
         uri = syncer_host + '/clean'
         data = aiohttp.FormData()
+        data.add_field('username', current_user())
         r = await session.post(uri, data = data, ssl=client_sslcontext)
         body = await r.read()
         print(f"response: {body.decode()}")
@@ -45,6 +48,7 @@ async def sendInstallRequestToSyncer(loop, cmdline, syncer_host):
         client_sslcontext = create_client_ssl_context()
         uri = syncer_host + '/install'
         data = aiohttp.FormData()
+        data.add_field('username', current_user())
         r = await session.post(uri, data = data, ssl=client_sslcontext)
         body = await r.read()
         print(f"response: {body.decode()}")
@@ -101,7 +105,14 @@ async def start_compile_job(session:ClientSession, client_sslcontext: ssl.SSLCon
 
     for filename in all_files:
         if filename != RESULT_DUMMY_FILENAME:
-            write_binary_to_file(filename, all_files[filename])
+            write_filename = uniform_filename(filename)
+            try:
+                content = all_files[filename]
+                print("WRITING FILE: " + write_filename + ", len = " + str(len(content)))
+                write_binary_to_file(write_filename, content)
+            except Exception as e:
+                logging.error("failed to write " + write_filename)
+                error_code = -1
 
     sys.exit(error_code)
 

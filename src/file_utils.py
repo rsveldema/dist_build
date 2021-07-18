@@ -127,6 +127,9 @@ def read_binary_content(filename: str) -> bytes:
         return fp.read()
 
 def write_text_to_file(container_path, content:str):
+    but_last = get_all_but_last_path_component(container_path)
+    if but_last != "":
+        os.makedirs(but_last, exist_ok=True)
     with open(container_path, 'w') as f:
         f.write(content)
 
@@ -136,6 +139,10 @@ def safe_write_text_to_file(container_path, content:str):
     write_text_to_file(container_path, content)
 
 def write_binary_to_file(container_path, content):
+    but_last = get_all_but_last_path_component(container_path)
+    if but_last != "":
+        os.makedirs(but_last, exist_ok=True)
+    print("WRITING BIN FILE: " + container_path)
     with open(container_path, 'wb') as f:
         f.write(content)
 
