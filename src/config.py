@@ -49,7 +49,7 @@ def storage_dir():
     home = os.getenv("HOME")
     if home == None:
         home = "c:/"
-    storage = home + '/dist_build/'
+    storage = home + '/dist_build'
     os.makedirs(storage, exist_ok=True)
     return storage
 
