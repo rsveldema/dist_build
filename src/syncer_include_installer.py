@@ -1,4 +1,3 @@
-
 import logging
 import os
 import sys
@@ -8,7 +7,6 @@ import ssl
 from typing import Dict, List
 from tqdm import tqdm
 import aiohttp
-from file_utils import create_client_ssl_context
 from aiohttp.client import ClientSession
 from serializer import Serializer, HeaderStatistics
 from options import DistBuildOptions
@@ -72,7 +70,7 @@ async def broadcast_files(session: aiohttp.ClientSession, hosts: List[str], dir:
         scheduled_broadcast_tasks[path] = False
 
 
-
+# TODO: fetch these from config.json
 def is_ignorable_dir(item):
     ignore_dirs = ["bin", "Licenses", "References", "Shortcuts"]    
     return item in ignore_dirs

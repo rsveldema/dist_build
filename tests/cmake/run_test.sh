@@ -23,5 +23,5 @@ python create_demo.cc.py 3 bar > generated_bar.h
 
 (
     cd build
-    cmake --build  .
+    time cmake --build . -j
 )

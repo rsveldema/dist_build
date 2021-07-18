@@ -27,7 +27,7 @@ class FileSystemObserver:
 
     def dispatch(self, evt):
         src_path = evt.src_path
-        if os.path.isdir(src_path):
+        if os.path.isdir(src_path) or src_path.find("CMakeFiles") > 0:
             logging.info("IGNORING DIR EVENT: " + src_path)
             return
 

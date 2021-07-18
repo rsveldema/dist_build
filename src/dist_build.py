@@ -133,6 +133,7 @@ def is_link_job(cmdlist: List[str]):
 
 def run_cmd_locally(cmdline): 
 
+    print("LOCAL JOB!!!!!\n")
     ret:subprocess.CompletedProcess = subprocess.run(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     exit_code = ret.returncode
