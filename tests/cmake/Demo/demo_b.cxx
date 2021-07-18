@@ -1,1 +1,1 @@
-#include "../generated_bar.cc"
+#include "../generated_foo.h"
