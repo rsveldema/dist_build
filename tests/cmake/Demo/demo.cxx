@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "../generated_bar.cc"
+
 int main()
 {
     if (foo())
