@@ -22,7 +22,7 @@ def find_macro(p:str):
 def expand_env_vars_in_array(paths:List[str]) -> List[str]:
     newpaths:List[str] = []
     for p in paths:
-        print("examining: " + p)
+        logging.debug(f"examining: {p} for macro expansions")
         macro = find_macro(p)
         if macro != None:
             replacement_string = getenv(macro)
