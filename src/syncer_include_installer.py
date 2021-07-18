@@ -1,6 +1,7 @@
 
 import logging
 import os
+from src.config import current_user
 import sys
 from config import get_build_hosts, get_include_dirs
 from file_utils import is_header_file, read_binary_content, path_join
@@ -26,6 +27,7 @@ async def do_broadcast_of_serialized_data(session: aiohttp.ClientSession, serial
         uri = 'https://' + host + "/install_file"
         data = aiohttp.FormData()
         data.add_field('content', serializer.payload(), content_type='application/octet-stream', content_transfer_encoding="binary") 
+        data.add_field('username', current_user(), content_type='application/octet-stream', content_transfer_encoding="binary") 
         #print("start----------------")
         async with session.post(uri, data = data, ssl=sslcontext) as post_response:
             post_result = await post_response.read()

@@ -33,6 +33,7 @@ options: DistBuildOptions
 async def install_file(request: aiohttp.RequestInfo):    
     data = await request.post()
     raw_content = data['content']
+    username = data['username'].decode()
 
     serializer = Serializer()
     ret = serializer.extract(raw_content)
@@ -40,7 +41,7 @@ async def install_file(request: aiohttp.RequestInfo):
     for pathprop in ret.keys():
         content = ret[pathprop]
 
-        install_path = path_join(source_storage_dir(), pathprop)
+        install_path = path_join(source_storage_dir(username), pathprop)
         install_dir = os.path.dirname(install_path).replace('/', '\\')
 
         if options.verbose():
@@ -103,12 +104,14 @@ def onerror(func, path, exc_info):
 async def worker_clean(request):  
     data = await request.post()
 
+    username = data['username'].decode()
+
     keep = ["bin", "config.json"]
     result = "ok"
 
-    for item in os.listdir(source_storage_dir()):
+    for item in os.listdir(source_storage_dir(username)):
         if not (item in keep):
-            path = source_storage_dir() + '/' + item
+            path = source_storage_dir(username) + '/' + item
             logging.info("deleting " + path)
             try:
                 if os.path.isdir(path):
@@ -158,6 +161,7 @@ class LocalBuildJob:
         self.session = session
         self.options = options
         self.user_include_roots = user_include_roots
+        self.username = self.env['USERNAME']
         
     def is_user_directory(self, filename:str):        
         filename = uniform_filename(filename)
@@ -178,7 +182,7 @@ class LocalBuildJob:
         (retcode, result) = await self.exec_cmd()        
         await self.send_reply(retcode, result)
         notify_job_done()        
-        os.chdir(source_storage_dir())
+        os.chdir(source_storage_dir(self.username))
  
 
     def change_dir(self):
@@ -191,7 +195,7 @@ class LocalBuildJob:
         if found_env_cwd != None:
             found_env_cwd = uniform_filename(found_env_cwd)
             logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
-            cwd = source_storage_dir() + '/' + found_env_cwd
+            cwd = source_storage_dir(self.username) + '/' + found_env_cwd
             os.makedirs(cwd, exist_ok=True)
             os.chdir(cwd)
         else:
@@ -206,7 +210,7 @@ class LocalBuildJob:
             if orig.startswith(opt_prefix):
                 orig = orig[len(opt_prefix):]
                 orig = uniform_filename(orig)
-                new_debug_dir = source_storage_dir() + '/' + orig
+                new_debug_dir = source_storage_dir(self.username) + '/' + orig
                 orig = opt_prefix + new_debug_dir
                 os.makedirs(new_debug_dir, exist_ok=True)
             new_cmdline.append(orig)   
@@ -241,7 +245,7 @@ class LocalBuildJob:
             elif orig.startswith(opt_prefix_VC):
                 orig = orig[len(opt_prefix_VC):]
                 new_debug_dir = uniform_filename(orig)
-                #new_debug_dir = source_storage_dir() + '/' + orig
+                #new_debug_dir = source_storage_dir(self.username) + '/' + orig
                 orig = opt_prefix_VC + new_debug_dir
                 if make_dir_but_last(new_debug_dir):
                     os.makedirs(new_debug_dir, exist_ok=True)
@@ -261,7 +265,7 @@ class LocalBuildJob:
                 #print(f"TEST ME HERE {orig}")
                 if self.is_user_directory(orig):
                     orig = uniform_filename(orig) 
-                    new_cmd = source_storage_dir() + orig
+                    new_cmd = source_storage_dir(self.username) + orig
             if orig == '/I' or orig == '-I':
                found_include_directive_for_next_option = True
             elif orig.startswith('-I'):
@@ -271,7 +275,7 @@ class LocalBuildJob:
                 #print(f"TEST ME HERE2 {orig}")
                 if self.is_user_directory(orig):
                     orig = uniform_filename(orig)
-                    new_cmd = '-I' + source_storage_dir() + orig    
+                    new_cmd = '-I' + source_storage_dir(self.username) + orig    
                 else:
                     new_cmd = no_replacement      
 
@@ -302,7 +306,7 @@ class LocalBuildJob:
 
     def save_file(self, old_path, content) -> str:
         old_path = uniform_filename(old_path)
-        container_path = source_storage_dir() + '/' + old_path
+        container_path = source_storage_dir(self.username) + '/' + old_path
         container_dir = os.path.dirname(container_path)
         os.makedirs(container_dir, exist_ok=True)
         write_text_to_file(container_path, content)

@@ -54,8 +54,8 @@ def storage_dir():
     return storage
 
 
-def source_storage_dir():
-    storage = storage_dir() + '/' + current_user()
+def source_storage_dir(username):
+    storage = storage_dir() + '/' + username
     os.makedirs(storage, exist_ok=True)
     return storage
 
