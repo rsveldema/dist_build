@@ -23,12 +23,12 @@ for i in range(0, num_loops):
     print()
 
     if i == 0:
-        print("" + prefix + "_" + str(i) + "::Data_" + str(i) + "<int> instance_"+str(i)+" = {123};")
+        print("" + prefix + "_" + str(i) + "::Data_" + str(i) + "<int> "+prefix+"_instance_"+str(i)+" = {123};")
     else:
         j = i - 1
-        print("" + prefix + "_" + str(i) + "::Data_" + str(i) + "<int> instance_"+str(i)+" = {instance_"+str(j)+".get()};")
+        print("" + prefix + "_" + str(i) + "::Data_" + str(i) + "<int> "+prefix+"_instance_"+str(i)+" = {"+prefix+"_instance_"+str(j)+".get()};")
 
         print("template<typename T>")
-        print("T& " + prefix + "_" + str(i) + "::Data_" + str(i) + "<T>::get() { return instance_"+str(j)+".get(); }")
+        print("T& " + prefix + "_" + str(i) + "::Data_" + str(i) + "<T>::get() { return "+prefix+"_instance_"+str(j)+".get(); }")
 
-print("int return_value_"+prefix+"() { return instance_"+str(i) + ".get(); }")
+print("int return_value_"+prefix+"() { return "+prefix+"_instance_"+str(i) + ".get(); }")

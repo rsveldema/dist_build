@@ -20,13 +20,13 @@ namespace bar_2 {
     };
 }
 
-bar_0::Data_0<int> instance_0 = {123};
+bar_0::Data_0<int> bar_instance_0 = {123};
 
-bar_1::Data_1<int> instance_1 = {instance_0.get()};
+bar_1::Data_1<int> bar_instance_1 = {bar_instance_0.get()};
 template<typename T>
-T& bar_1::Data_1<T>::get() { return instance_0.get(); }
+T& bar_1::Data_1<T>::get() { return bar_instance_0.get(); }
 
-bar_2::Data_2<int> instance_2 = {instance_1.get()};
+bar_2::Data_2<int> bar_instance_2 = {bar_instance_1.get()};
 template<typename T>
-T& bar_2::Data_2<T>::get() { return instance_1.get(); }
-int return_value_bar() { return instance_2.get(); }
+T& bar_2::Data_2<T>::get() { return bar_instance_1.get(); }
+int return_value_bar() { return bar_instance_2.get(); }

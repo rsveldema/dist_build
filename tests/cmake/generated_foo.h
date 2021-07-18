@@ -20,13 +20,13 @@ namespace foo_2 {
     };
 }
 
-foo_0::Data_0<int> instance_0 = {123};
+foo_0::Data_0<int> foo_instance_0 = {123};
 
-foo_1::Data_1<int> instance_1 = {instance_0.get()};
+foo_1::Data_1<int> foo_instance_1 = {foo_instance_0.get()};
 template<typename T>
-T& foo_1::Data_1<T>::get() { return instance_0.get(); }
+T& foo_1::Data_1<T>::get() { return foo_instance_0.get(); }
 
-foo_2::Data_2<int> instance_2 = {instance_1.get()};
+foo_2::Data_2<int> foo_instance_2 = {foo_instance_1.get()};
 template<typename T>
-T& foo_2::Data_2<T>::get() { return instance_1.get(); }
-int return_value_foo() { return instance_2.get(); }
+T& foo_2::Data_2<T>::get() { return foo_instance_1.get(); }
+int return_value_foo() { return foo_instance_2.get(); }
