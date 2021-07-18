@@ -21,7 +21,7 @@ from config import get_syncer_host, source_storage_dir, num_available_cores
 import asyncio
 import pathlib
 import time
-from file_utils import safe_read_binary_content, file_exists, get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
+from file_utils import safe_write_text_to_file, safe_read_binary_content, file_exists, get_all_but_last_path_component, is_a_directory_path, is_source_file, make_dir_but_last, path_join, read_content, uniform_filename, write_binary_to_file, write_text_to_file, read_binary_content, transform_filename_to_output_name, FILE_PREFIX_IN_FORM
 import shutil
 
 ssl.match_hostname = lambda cert, hostname: True
@@ -193,7 +193,7 @@ class LocalBuildJob:
 
         if found_env_cwd != None:
             found_env_cwd  = uniform_filename(found_env_cwd)
-            logging.debug("FOUND CWD/PWD in sent env: " + found_env_cwd)
+            logging.info("FOUND CWD/PWD in sent env: " + found_env_cwd)
             found_env_cwd = source_storage_dir(self.username) + '/' + found_env_cwd
             os.makedirs(found_env_cwd, exist_ok=True)
         return found_env_cwd
@@ -201,6 +201,7 @@ class LocalBuildJob:
     def change_dir(self):
         cwd:str = self.get_current_dir_from_env()
         if cwd != None:
+            logging.info("CHDIR: " + cwd)
             os.chdir(cwd)
         else:
             print("failed to find CWD or PWD in env. variables. Can't change to original build dir in sandbox to allow relative includes to work")
@@ -309,7 +310,7 @@ class LocalBuildJob:
             oldpath = it
             newpath = self.save_file(oldpath, self.files[it])
             #print(f"SAVE FILES ====> {oldpath} vs {newpath}")
-            self.patch_arg_refering_saved_file(oldpath, newpath)
+            #self.patch_arg_refering_saved_file(oldpath, newpath)
         self.profiler.leave()
 
     def patch_arg_refering_saved_file(self, oldpath:str, newpath:str):
@@ -331,9 +332,8 @@ class LocalBuildJob:
             old_path = uniform_filename(old_path)
             container_path = source_storage_dir(self.username) + '/' + old_path
         
-        container_dir = os.path.dirname(container_path)
-        os.makedirs(container_dir, exist_ok=True)
-        write_text_to_file(container_path, content)
+        container_path = uniform_filename(container_path)
+        safe_write_text_to_file(container_path, content)
         #print("wrote " + container_path)
         return container_path
 
@@ -521,7 +521,7 @@ def main():
 
     loop = asyncio.get_event_loop()
 
-    for i in range(num_available_cores()):
+    for i in range(1): #num_available_cores()):
         loop.create_task(poll_job_queue(i, profiler))
 
     aiohttp.web.run_app(make_app(options, profiler), ssl_context=server_sslcontext)

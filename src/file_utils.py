@@ -24,9 +24,10 @@ remove windows drive letter if prefixed with it
 """
 def uniform_filename(filename) -> str:
     if filename.lower().startswith("c:"):
-        filename = filename[2:]
+        filename = filename[2:]        
     filename = filename.replace('/', '#')
     filename = filename.replace('\\', '#')
+    filename = filename.replace('##', '#')
     filename = filename.replace('#', os.path.sep)
     return filename
 
@@ -125,9 +126,14 @@ def read_binary_content(filename: str) -> bytes:
     with open(filename, 'rb') as fp:
         return fp.read()
 
-def write_text_to_file(container_path, content):
+def write_text_to_file(container_path, content:str):
     with open(container_path, 'w') as f:
         f.write(content)
+
+def safe_write_text_to_file(container_path, content:str):
+    container_dir = get_all_but_last_path_component(container_path)
+    os.makedirs(container_dir, exist_ok=True)
+    write_text_to_file(container_path, content)
 
 def write_binary_to_file(container_path, content):
     with open(container_path, 'wb') as f:
