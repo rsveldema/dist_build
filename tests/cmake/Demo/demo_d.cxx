@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../generated_bar.h"
+#include "../generated_ddd.h"
 
 int main()
 {
