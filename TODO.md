@@ -20,7 +20,7 @@
 
 ## Performance TODOs
 
-- let the syner write the obj/.d files instead of forwarding them to the dist_build.exe process and doing it there?
+- if syncer runs on the same machine as dist_build.exe, let the syner write the obj/.d files instead of forwarding them to the dist_build.exe process and doing it there?
 - performance optimizations for uploads/downloads
 - add benchmarks
 - use asyncio for writing the obj and .d files too

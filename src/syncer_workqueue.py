@@ -1,5 +1,7 @@
 import logging
+from config import current_user
 import aiohttp
+from aiohttp.formdata import FormData
 
 from aiohttp_session import setup
 from aio_server import aio_server
@@ -121,7 +123,7 @@ async def notify_compile_job_done(request):
         decoded_filename = unquote(p)
         logging.info(f"EXAMINING {decoded_filename}")
         if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
-            print("FOUND OBJECT FILE: " + decoded_filename)
+            #print("FOUND OBJECT FILE: " + decoded_filename)
             out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
             data:web.FileField = payload[p]
             to_send[out_file] = data.file.read()
@@ -171,7 +173,9 @@ async def handle_clean_request(request):
 
     for p in get_build_hosts():
         uri = "https://" + p + "/clean"
-        r = await session.post(uri, ssl=client_sslcontext)
+        data = FormData()
+        data.add_field("username", current_user())
+        r = await session.post(uri, data=data, ssl=client_sslcontext)
         body = await r.read()
         logging.info(f"received: {body}")
 
