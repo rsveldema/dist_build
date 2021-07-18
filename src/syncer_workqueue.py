@@ -61,7 +61,7 @@ class RemoteJob:
         #print("done flag = " + str(self.is_done))
         while not self.is_done:
             #print("done flag = " + str(self.is_done) + ', ' + str(len(job_queue))) 
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
 
 
 
@@ -119,9 +119,9 @@ async def notify_compile_job_done(request):
     to_send: Dict[str, bytes] = {}
     for p in payload:
         decoded_filename = unquote(p)
-        logging.debug(f"EXAMINGING {decoded_filename}")
+        logging.info(f"EXAMINING {decoded_filename}")
         if decoded_filename.startswith(FILE_PREFIX_IN_FORM):
-            #print("FOUND OBJECT FILE: " + decoded_filename)
+            print("FOUND OBJECT FILE: " + decoded_filename)
             out_file = decoded_filename[len(FILE_PREFIX_IN_FORM):]
             data:web.FileField = payload[p]
             to_send[out_file] = data.file.read()
@@ -143,7 +143,7 @@ async def pop_compile_job(request):
             new_job.set_machine_id(machine_id)
             js = json.dumps(new_job.get_dict())
             return web.Response(text=js)
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
     return web.Response(text="ok")
 
 
@@ -171,9 +171,9 @@ async def handle_clean_request(request):
 
     for p in get_build_hosts():
         uri = "https://" + p + "/clean"
-        r = await session.get(uri, ssl=client_sslcontext)
+        r = await session.post(uri, ssl=client_sslcontext)
         body = await r.read()
-        logging.debug(f"received: {body}")
+        logging.info(f"received: {body}")
 
         response.append( json.loads(body.decode()) )
 

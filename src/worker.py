@@ -138,7 +138,7 @@ async def make_app(options: DistBuildOptions, profiler: Profiler):
     setup(app, EncryptedCookieStorage(secret_key))
     app.add_routes([aiohttp.web.post('/install_file', install_file)])
     app.add_routes([aiohttp.web.get('/status', show_status)])
-    app.add_routes([aiohttp.web.get('/clean', worker_clean)])    
+    app.add_routes([aiohttp.web.post('/clean', worker_clean)])    
     return app
 
 
