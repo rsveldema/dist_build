@@ -41,17 +41,7 @@ async def install_file(request: aiohttp.RequestInfo):
 
     for pathprop in ret.keys():
         content = ret[pathprop]
-
         install_path = path_join(source_storage_dir(username), pathprop)
-        install_dir = os.path.dirname(install_path).replace('/', '\\')
-
-        if options.verbose():
-            logging.debug('going to install ' + os.path.basename(install_path))
-            logging.debug(" AT  " + install_dir)
-
-        if not os.path.isdir(install_dir):
-            os.makedirs(install_dir)
-
         write_binary_to_file(install_path, content)
 
     return aiohttp.web.Response(text="ok")
@@ -187,6 +177,7 @@ def main():
     loop = asyncio.get_event_loop()
 
     for i in range(num_available_cores()):
+    #for i in range(1):
         loop.create_task(poll_job_queue(i, profiler))
 
     aiohttp.web.run_app(make_app(options, profiler), ssl_context=server_sslcontext)
