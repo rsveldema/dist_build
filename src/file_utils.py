@@ -40,6 +40,22 @@ def filename_ends_with(filename, suffix_list):
 def is_a_directory_path(dir:str):
     return dir.endswith('/') or dir.endswith('\\')
 
+
+def file_exists(path):
+    return os.path.isfile(path)
+
+"""
+returns None on error
+"""
+def safe_read_binary_content(path):
+    try:
+        if file_exists(path):
+            #print("using explicit output: " + explicit_out)
+            return read_binary_content(path)
+    except Exception as e:
+        logging.error(f"failed to read {path} due to {e}")
+    return None
+
 def get_last_path_component(dir:str):
     dir = dir.strip()
     last1 = dir.rfind('/')
