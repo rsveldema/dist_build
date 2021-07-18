@@ -1,9 +1,8 @@
 
 import logging
 import os
-from src.config import current_user
 import sys
-from config import get_build_hosts, get_include_dirs
+from config import get_build_hosts, get_include_dirs, current_user
 from file_utils import is_header_file, read_binary_content, path_join
 import ssl
 from typing import Dict, List
