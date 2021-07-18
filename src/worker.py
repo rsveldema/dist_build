@@ -104,7 +104,7 @@ def onerror(func, path, exc_info):
 async def worker_clean(request):  
     data = await request.post()
 
-    username = data['username'].decode()
+    username = data['username']
 
     keep = ["bin", "config.json"]
     result = "ok"
@@ -521,7 +521,7 @@ def main():
 
     loop = asyncio.get_event_loop()
 
-    for i in range(1): #num_available_cores()):
+    for i in range(num_available_cores()):
         loop.create_task(poll_job_queue(i, profiler))
 
     aiohttp.web.run_app(make_app(options, profiler), ssl_context=server_sslcontext)
