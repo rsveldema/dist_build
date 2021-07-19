@@ -17,8 +17,10 @@ def current_user():
   else:
     return getpass.getuser()
 
+_MACRO_START_CHAR = '$'
+
 def find_macro(p:str):
-    ix = p.find('$')
+    ix = p.find(_MACRO_START_CHAR)
     if ix >= 0:
         ix += 1
         start = ix
@@ -38,7 +40,7 @@ def expand_env_vars_in_array(paths:List[str]) -> List[str]:
             replacement_string = os.getenv(macro)
             if replacement_string != None:
                 replacement_string = uniform_filename(replacement_string)
-                p = p.replace("$HOME", replacement_string)
+                p = p.replace(_MACRO_START_CHAR + macro, replacement_string)
             else:
                 logging.error(f"failed to find env var '{macro}' used in '{p}'")
         newpaths.append(p)

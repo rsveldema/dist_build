@@ -25,7 +25,7 @@ class FileSystemObserver:
         self.options = options
         self.scheduled_broadcast_tasks = scheduled_broadcast_tasks
 
-    def dispatch(self, evt):
+    def dispatch(self, evt):        
         src_path = evt.src_path
         if os.path.isdir(src_path) or src_path.find("CMakeFiles") > 0:
             logging.info("IGNORING DIR EVENT: " + src_path)
@@ -35,7 +35,7 @@ class FileSystemObserver:
             logging.info("IGNORING NON HEADER: " + src_path)
             return
 
-        logging.debug("got file system evt: " + src_path)
+        logging.info("got file system evt: " + src_path)
 
         serializer = Serializer()
 

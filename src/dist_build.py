@@ -108,7 +108,6 @@ async def start_compile_job(session:ClientSession, client_sslcontext: ssl.SSLCon
             write_filename = uniform_filename(filename)
             try:
                 content = all_files[filename]
-                print("WRITING FILE: " + write_filename + ", len = " + str(len(content)))
                 write_binary_to_file(write_filename, content)
             except Exception as e:
                 logging.error("failed to write " + write_filename)

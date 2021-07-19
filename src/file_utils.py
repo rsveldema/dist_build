@@ -142,13 +142,12 @@ def write_binary_to_file(container_path, content):
     but_last = get_all_but_last_path_component(container_path)
     if but_last != "":
         os.makedirs(but_last, exist_ok=True)
-    print("WRITING BIN FILE: " + container_path)
+    #print("\tWRITING BIN FILE: " + container_path)
     with open(container_path, 'wb') as f:
         f.write(content)
 
 
 def transform_filename_to_output_name(filename:str, is_microsoft: bool, output_path: str):
-
     filename = uniform_filename(filename)
 
     prefix = ""
