@@ -3,6 +3,27 @@ import sys
 import json
 
 
+_performance_data=[]
+num_current_jobs = 0
+
+def get_worker_performance_data():
+    return _performance_data
+
+def add_performance_data():
+    now = time.time()
+    perf = {'x': now, 'y' : num_current_jobs}
+    _performance_data.append(perf)
+
+
+def notify_new_job_started():
+    global num_current_jobs
+    num_current_jobs += 1
+    add_performance_data()
+
+def notify_job_done():
+    global num_current_jobs
+    num_current_jobs -= 1
+    add_performance_data()
 
 class StackFrame:
     def __init__(self, name: str):
